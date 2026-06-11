@@ -6,7 +6,9 @@ Photostor's sibling: a **map-based** social deduction game. Everyone drops a pin
 
 ## The map works out of the box
 
-Geopostor uses **Leaflet + OpenStreetMap**, which is completely free and needs **no API key and no setup**. Map tiles load straight from the CDN. When you deploy and open the app, the map just works. There is nothing you have to configure for basic play.
+Geopostor uses **Leaflet + CartoDB Dark Matter** tiles, which are completely free and need **no API key and no setup**. The dark tiles match the Field Atlas theme. Map tiles load straight from the CDN. When you deploy and open the app, the map just works. There is nothing you have to configure for basic play.
+
+If you ever want to switch tile providers, edit `makeBaseMap()` in `app.js` — it's a single `L.tileLayer(...)` call.
 
 The pin previews (the image shown when you place or inspect a pin) also work with zero setup — they default to a free **satellite view** (Esri World Imagery). Aerial, not street-level, but global and instant.
 
@@ -103,5 +105,76 @@ service cloud.firestore {
 ## How prompts work
 
 Categories are broad themes; each holds several specific words. A round picks a category, then a random word inside it. Example categories: Transportation, Sports, Food & Drink, Industry, Nature, Animals, Weather, Music, History, Entertainment, Science & Space, Landmarks, US Culture, Outdoors, Fashion, Beverages. The imposter knowing "Transportation" still has to guess whether everyone got Subway, Airport, Ferry, etc. — that's the bluff.
+
+---
+
+## Host settings: imposters, timers & test mode
+
+The host configures these in the lobby; everyone else sees a read-only mirror that updates live.
+
+- **Imposters**: 1, 2, or 3 (default 1).
+- **Discussion time**: 15 / 30 / 45 / 60 seconds (default **30s**). Once everyone submits a pin, this is how long the group has to talk it out before the host can open the vote — the **OPEN THE VOTE** button stays disabled and shows a countdown until it expires.
+- **Vote time**: 30 / 60 / 90 / 120 seconds (default **60s**). A countdown badge in the top-right shows everyone how long the vote stays open. Voting closes automatically when the timer hits zero, or as soon as everyone has voted — whichever comes first. If the timer runs out with no votes cast, the round result shows "TIME'S UP — NO ONE VOTED" and no one is eliminated.
+- **Test mode**: bypasses the 3-player minimum (2 players OK) and disables win conditions — useful for trying things out. The host ends the session manually with **END SESSION**.
+
+All settings can be changed any time before **START SESSION** is pressed.
+
+---
+
+## CrazyGames interstitial ads (optional)
+
+Geopostor ships with placeholder ad plumbing, off by default (`CRAZY_GAMES_ENABLED = false` in `app.js`). A full-screen "Advertisement" overlay with a spinner is wired up at three points — after creating/joining a room, when leaving a room, and when the host starts a new session — but it just shows briefly and disappears until you enable real ads. The overlay never blocks game state: the lobby/game keeps running underneath, it just visually and interactively blocks the player until the ad finishes.
+
+To wire up real CrazyGames ads once you're ready to publish there:
+
+**Step 1 — Add the SDK script tag**
+1. Sign in to your CrazyGames developer account and open your game's dashboard to get the SDK `<script>` tag (e.g. `https://sdk.crazygames.com/crazygames-sdk-v3.js`).
+2. Add it to `index.html`, just before `<script type="module" src="app.js">`.
+
+**Step 2 — Initialize the SDK**
+Per CrazyGames' docs, call their init function (typically `window.CrazyGames.SDK.init()`) early — e.g. at the top of `app.js` — and make sure it resolves before the game starts showing ads.
+
+**Step 3 — Replace the placeholder in `showInterstitialAd()`**
+In `app.js`, find:
+```js
+function showInterstitialAd(adFree) {
+  return new Promise(resolve => {
+    if (adFree || !CRAZY_GAMES_ENABLED) { resolve(); return; }
+    const overlay = $('ad-overlay');
+    overlay.hidden = false;
+    // TODO: once the CrazyGames SDK is loaded ...
+    setTimeout(() => { overlay.hidden = true; resolve(); }, 1200);
+  });
+}
+```
+Replace the `setTimeout(...)` line with the real ad request:
+```js
+window.CrazyGames.SDK.ad.requestAd('midgame', {
+  adFinished: () => { overlay.hidden = true; resolve(); },
+  adError:    () => { overlay.hidden = true; resolve(); },
+  adStarted:  () => {},
+});
+```
+
+**Step 4 — Flip the flag**
+Near the top of `app.js`:
+```js
+const CRAZY_GAMES_ENABLED = false;
+```
+Change to `true`. Ads now show at all three trigger points for any room that isn't ad-free.
+
+---
+
+## Ad-free code (optional)
+
+Set a secret code that makes a room permanently ad-free for everyone in it, for the room's entire lifetime:
+
+1. Open `app.js`, find:
+   ```js
+   const AD_FREE_CODE = '';
+   ```
+2. Set it to any string, e.g. `const AD_FREE_CODE = 'mysecretcode';`.
+3. On the **CREATE A ROOM** screen there's an optional "Ad-free code" field. If the host enters a value matching `AD_FREE_CODE` exactly, the room is created with `adFree: true` — no one in that room (host included) ever sees an interstitial ad, regardless of `CRAZY_GAMES_ENABLED`. The lobby shows an "Ads: off" / "Ad-free code: accepted" indicator so the host can confirm it worked.
+4. Leave `AD_FREE_CODE` set to `''` to disable this feature entirely — the field has no effect either way.
 
 — built for Jake

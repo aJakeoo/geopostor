@@ -1,24 +1,26 @@
 /* ============================================================
-   PHOTOSTOR — STYLE
-   Industrial / interrogation-room aesthetic.
-   Green = innocent/word. Red = imposter/danger.
+   GEOPOSTOR, STYLE
+   "Field Atlas" expedition / dark-explorer aesthetic.
+   Brass/gold = innocent/word. Rust-red = imposter/danger.
    ============================================================ */
 
 :root {
-  --bg:        #0d0f0e;
-  --bg-2:      #151917;
-  --panel:     #1b211e;
-  --panel-2:   #232b27;
-  --line:      #34403a;
-  --ink:       #eef2ef;
-  --ink-dim:   #8c968f;
-  --green:     #3ddc84;
-  --green-deep:#0f3d24;
-  --red:       #ff4d4d;
-  --red-deep:  #3d0f0f;
-  --amber:     #ffc24b;
-  --radius:    14px;
+  --bg:        #11140f;
+  --bg-2:      #171b14;
+  --panel:     #1c2018;
+  --panel-2:   #242a1e;
+  --line:      #39342a;
+  --ink:       #ece6d8;
+  --ink-dim:   #9c9485;
+  --green:     #c9a24b;
+  --green-deep:#3a2d10;
+  --red:       #c1502e;
+  --red-deep:  #3a1810;
+  --amber:     #e0a83c;
+  --radius:    10px;
   --tap:       58px;
+  --caret-h:   34px;
+  --preview-h: 64px;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -32,14 +34,14 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: 'Barlow', system-ui, sans-serif;
   overscroll-behavior: none;
 }
 
 body {
   background:
-    radial-gradient(120% 80% at 50% -10%, #1c2420 0%, var(--bg) 55%),
-    var(--bg);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg fill='none' stroke='%23c9a24b' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M-60 24 C 0 72, 120 -24, 300 48'/%3E%3Cpath d='M-60 84 C 0 132, 120 36, 300 108'/%3E%3Cpath d='M-60 144 C 0 192, 120 96, 300 168'/%3E%3Cpath d='M-60 204 C 0 252, 120 156, 300 228'/%3E%3C/g%3E%3C/svg%3E") repeat,
+    radial-gradient(120% 80% at 50% -10%, #232a1c 0%, var(--bg) 55%) var(--bg);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -51,6 +53,66 @@ body {
   z-index: 9999;
   opacity: 0.05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Vote countdown badge ---------- */
+.vote-countdown {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  z-index: 500;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--amber);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+.vote-countdown.urgent {
+  color: var(--red);
+  border-color: var(--red-deep);
+}
+
+/* ---------- Interstitial ad overlay ---------- */
+.ad-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 12, 8, 0.94);
+}
+.ad-overlay[hidden] { display: none; }
+.ad-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px;
+}
+.ad-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--line);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: ad-spin 0.9s linear infinite;
+}
+@keyframes ad-spin {
+  to { transform: rotate(360deg); }
+}
+.ad-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: 0;
 }
 
 #app { height: 100%; }
@@ -78,12 +140,12 @@ body {
 
 /* ---------- Typography ---------- */
 .logo {
-  font-family: 'Archivo Black', sans-serif;
-  /* Sized so the wide PHOTOSTOR word always fits with breathing room
+  font-family: 'Staatliches', sans-serif;
+  /* Sized so the wide GEOPOSTOR word always fits with breathing room
      on iPhone widths (~390px) and scales up nicely on larger screens. */
-  font-size: clamp(38px, 13vw, 88px);
-  letter-spacing: -0.045em;
-  line-height: 0.86;
+  font-size: clamp(44px, 15vw, 96px);
+  letter-spacing: 0.04em;
+  line-height: 0.92;
   margin: 0;
   text-align: center;
   color: var(--ink);
@@ -104,9 +166,9 @@ body {
   text-align: center;
 }
 .screen-title {
-  font-family: 'Archivo Black', sans-serif;
-  font-size: clamp(26px, 8vw, 40px);
-  letter-spacing: -0.02em;
+  font-family: 'Staatliches', sans-serif;
+  font-size: clamp(28px, 9vw, 44px);
+  letter-spacing: 0.03em;
   margin: 0;
   text-align: center;
 }
@@ -169,10 +231,11 @@ body {
   min-height: var(--tap);
   border: none;
   border-radius: var(--radius);
-  font-family: 'Archivo', sans-serif;
+  font-family: 'Barlow', sans-serif;
   font-weight: 800;
   font-size: 17px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: transform .08s ease, filter .15s ease, background .15s ease;
   width: 100%;
@@ -181,7 +244,7 @@ body {
 .btn:active { transform: scale(0.97); }
 .btn-primary {
   background: var(--green);
-  color: #05140b;
+  color: #1d1306;
   box-shadow: 0 6px 0 var(--green-deep);
 }
 .btn-primary:active { box-shadow: 0 2px 0 var(--green-deep); transform: translateY(3px) scale(.99); }
@@ -195,16 +258,17 @@ body {
   background: transparent;
   color: var(--ink);
   border: 2px solid var(--line);
+  box-shadow: inset 0 0 0 1px rgba(236,230,216,0.05);
 }
 .btn-rejoin {
   background: transparent;
   color: var(--amber);
   border: 2px solid var(--amber);
-  box-shadow: 0 0 30px rgba(255, 194, 75, 0.15);
+  box-shadow: 0 0 30px rgba(224, 168, 60, 0.15);
   letter-spacing: 0.05em;
 }
 .btn-rejoin:active {
-  background: rgba(255, 194, 75, 0.08);
+  background: rgba(224, 168, 60, 0.08);
   transform: scale(0.97);
 }
 .btn-rejoin #btn-rejoin-code {
@@ -217,7 +281,7 @@ body {
   border-color: var(--red);
   color: var(--red);
 }
-.btn-start { margin-top: 22px; margin-bottom: 56px; }
+.btn-start { margin-top: 22px; }
 
 .back-btn, .leave-btn {
   position: absolute;
@@ -231,6 +295,53 @@ body {
 }
 .back-btn { top: max(16px, env(safe-area-inset-top)); left: 14px; }
 .leave-btn { bottom: max(16px, env(safe-area-inset-bottom)); }
+
+/* Lobby: Leave Room renders in normal flow as its own footer item,
+   so it never overlaps Start Session / the "waiting for host" note
+   that sit at the bottom of the host/joiner settings blocks. */
+#screen-lobby #btn-leave {
+  position: static;
+  margin-top: 8px;
+}
+
+/* ---------- How to Play ---------- */
+.howto-content {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 44px 0 24px;
+}
+.howto-intro {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 6px 0 10px;
+}
+.howto-heading {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  letter-spacing: 0.04em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin: 16px 0 4px;
+}
+.howto-list {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.howto-list li {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.howto-content .hl-red { color: var(--red); }
+.howto-content .hl-green { color: var(--green); }
+.howto-content .hl-amber { color: var(--amber); }
 
 /* ---------- Forms ---------- */
 .form-stack {
@@ -254,7 +365,7 @@ body {
   border: 2px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);
-  font-family: 'Archivo', sans-serif;
+  font-family: 'Barlow', sans-serif;
   font-size: 18px;
   font-weight: 600;
   padding: 0 18px;
@@ -266,7 +377,7 @@ body {
 }
 .field:focus { border-color: var(--green); }
 .code-input {
-  font-family: 'Archivo Black', sans-serif;
+  font-family: 'Staatliches', sans-serif;
   font-size: 36px;
   letter-spacing: 0.4em;
   text-align: center;
@@ -291,13 +402,13 @@ body {
   color: var(--ink-dim);
 }
 .room-code-big {
-  font-family: 'Archivo Black', sans-serif;
+  font-family: 'Staatliches', sans-serif;
   font-size: clamp(54px, 18vw, 86px);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   color: var(--green);
   line-height: 1;
   margin-top: 6px;
-  text-shadow: 0 0 30px rgba(61,220,132,.25);
+  text-shadow: 0 0 30px rgba(201,162,75,.25);
 }
 .players-block {
   width: 100%;
@@ -349,6 +460,56 @@ body {
 }
 .player-list li.eliminated { opacity: 0.45; }
 .player-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex: 0 0 auto; }
+.player-emoji { font-size: 16px; line-height: 1; flex: 0 0 auto; }
+
+/* ---------- Emoji avatar picker ---------- */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.emoji-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+  color: var(--ink);
+}
+.emoji-btn.active {
+  border-color: var(--green);
+  background: var(--green-deep);
+}
+.emoji-btn-none {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--ink-dim);
+}
+
+/* ---------- Map pin markers (player emoji / color) ---------- */
+.pin-marker { background: transparent; border: none; }
+.pin-marker-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+}
+.pin-marker-emoji {
+  transform: rotate(45deg);
+  font-size: 15px;
+  line-height: 1;
+}
 
 .host-settings, .form-stack, .joiner-settings { width: 100%; max-width: 440px; }
 .host-settings, .joiner-settings { display: flex; flex-direction: column; gap: 10px; }
@@ -451,17 +612,17 @@ body {
 .reveal-card {
   width: 100%;
   max-width: 440px;
-  border-radius: 20px;
+  border-radius: var(--radius);
   padding: 48px 28px;
   text-align: center;
   border: 2px solid var(--green);
   background: linear-gradient(160deg, var(--green-deep), var(--panel));
-  box-shadow: 0 0 60px rgba(61,220,132,.18);
+  box-shadow: 0 0 60px rgba(201,162,75,.18);
 }
 .reveal-card.imposter {
   border-color: var(--red);
   background: linear-gradient(160deg, var(--red-deep), var(--panel));
-  box-shadow: 0 0 60px rgba(255,77,77,.22);
+  box-shadow: 0 0 60px rgba(193,80,46,.22);
 }
 .reveal-eyebrow {
   font-family: 'Space Mono', monospace;
@@ -471,9 +632,9 @@ body {
 }
 .reveal-card.imposter .reveal-eyebrow { color: var(--red); }
 .reveal-word {
-  font-family: 'Archivo Black', sans-serif;
-  font-size: clamp(40px, 13vw, 64px);
-  letter-spacing: -0.02em;
+  font-family: 'Staatliches', sans-serif;
+  font-size: clamp(44px, 14vw, 70px);
+  letter-spacing: 0.02em;
   margin: 16px 0;
   line-height: 1;
 }
@@ -588,8 +749,9 @@ body {
 /* ---------- Round result + final ---------- */
 .results-block { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
 .result-headline {
-  font-family: 'Archivo Black', sans-serif;
-  font-size: clamp(24px, 7.5vw, 36px);
+  font-family: 'Staatliches', sans-serif;
+  font-size: clamp(28px, 8.5vw, 42px);
+  letter-spacing: 0.02em;
   text-align: center;
   line-height: 1.05;
 }
@@ -637,16 +799,16 @@ body {
   color: var(--ink);
 }
 .spec-imposter-reveal {
-  font-family: 'Archivo Black', sans-serif;
-  font-size: 22px;
+  font-family: 'Staatliches', sans-serif;
+  font-size: 24px;
   color: var(--red);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
 }
 .spec-word-reveal {
-  font-family: 'Archivo Black', sans-serif;
-  font-size: 20px;
+  font-family: 'Staatliches', sans-serif;
+  font-size: 22px;
   color: var(--green);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
   margin-top: 6px;
 }
 .spec-host-controls {
@@ -675,7 +837,7 @@ body {
 }
 
 /* ============================================================
-   GEOPOSTOR — MAP MODE ADDITIONS
+   GEOPOSTOR, MAP MODE ADDITIONS
    ============================================================ */
 .screen-top {
   justify-content: flex-start;
@@ -728,20 +890,12 @@ body {
 .search-results li:last-child { border-bottom: none; }
 .search-results li:hover,
 .search-results li:active { background: var(--panel-2); color: var(--green); }
-.map-box {
-  width: 100%;
-  max-width: 480px;
-  height: 300px;
-  border-radius: var(--radius);
-  border: 2px solid var(--line);
-  overflow: hidden;
-  flex: 0 0 auto;
+.map-fill {
+  position: absolute;
+  inset: 0;
   background: var(--panel);
-  position: relative;
-  z-index: 1;
 }
-.map-box-large { height: 340px; }
-.leaflet-container { background: #0d0f0e; font-family: 'Archivo', sans-serif; }
+.leaflet-container { background: #11140f; font-family: 'Barlow', sans-serif; }
 .leaflet-tooltip {
   background: rgba(13, 15, 14, 0.92);
   border: 1px solid var(--green);
@@ -776,6 +930,16 @@ body {
   border: 0;
   object-fit: cover;
 }
+.pin-preview-overlay {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-width: none;
+  z-index: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+}
+.pin-preview-overlay .preview-frame { height: 150px; }
 .pin-legend {
   list-style: none;
   margin: 0;
@@ -797,3 +961,198 @@ body {
   transition: border-color .12s ease;
 }
 .pin-legend li:active { border-color: var(--green); }
+
+/* ---------- Map-fill scroll-snap layout ---------- */
+.screen-map {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.screen-map.active { display: block; }
+
+.map-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.map-section {
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.map-section-top,
+.map-section-bottom {
+  justify-content: center;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+}
+.map-section-map {
+  position: relative;
+  padding: 0;
+}
+
+.scroll-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-align: center;
+}
+.scroll-hint-floating {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(28, 32, 24, 0.75);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: var(--ink);
+  z-index: 50;
+  pointer-events: none;
+  animation: hint-fade 4s ease forwards;
+}
+.scroll-hint-floating.scroll-hint-up { top: 14px; }
+.scroll-hint-floating.scroll-hint-down { bottom: 14px; }
+@keyframes hint-fade {
+  0%, 60% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ============================================================
+   COLLAPSIBLE BOTTOM PANELS — shared "caret" pattern.
+   Fixed strips anchored to the bottom of map-fill screens.
+   .collapsible-panel slides out of view via translateY when its
+   companion .caret-bar is tapped -- no display toggling, so the
+   map and Firestore sync underneath are never interrupted.
+   ============================================================ */
+.caret-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  height: calc(var(--caret-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: rgba(17, 20, 15, 0.85);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  z-index: 850;
+}
+.caret-glyph {
+  font-family: 'Space Mono', monospace;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--amber);
+}
+.collapsible-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 830;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.3s ease;
+}
+.collapsible-panel.collapsed { transform: translateY(100%); }
+
+/* ---------- Submit screen: 3-layer bottom panel ---------- */
+.submit-caret-bar { bottom: 0; }
+.submit-preview-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--caret-h) + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  height: var(--preview-h);
+  z-index: 840;
+  border-radius: 0;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-bottom: none;
+  background: rgba(28, 32, 24, 0.92);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  overflow: hidden;
+}
+.submit-preview-panel .preview-label {
+  padding: 0;
+  flex: 1;
+}
+.submit-preview-panel .preview-placeholder,
+.submit-preview-panel .preview-frame {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 44px;
+  border-radius: 6px;
+}
+.submit-preview-panel .preview-placeholder {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  overflow: hidden;
+}
+.submit-preview-panel .preview-frame {
+  object-fit: cover;
+  display: block;
+  border: 0;
+}
+.submit-dialog {
+  bottom: calc(var(--caret-h) + var(--preview-h) + env(safe-area-inset-bottom));
+}
+.submit-dialog-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.submit-dialog .btn-primary { font-family: 'Archivo Black', sans-serif; }
+
+/* ---------- Showcase screen: collapsible vote panel ---------- */
+.vote-panel-caret-bar { bottom: 0; }
+.vote-panel {
+  bottom: calc(var(--caret-h) + env(safe-area-inset-bottom));
+}
+#screen-showcase .map-section-bottom {
+  padding-bottom: calc(var(--caret-h) + 140px);
+}

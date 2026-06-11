@@ -1,5 +1,5 @@
 // ============================================================
-//  GEOPOSTOR — APP LOGIC + FIREBASE SYNC
+//  GEOPOSTOR, APP LOGIC + FIREBASE SYNC
 //  Map-based social deduction. Keys go in firebase-config.js.
 // ============================================================
 
@@ -14,7 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ============================================================
-//  OPTIONAL — GOOGLE STREET VIEW for pin previews.
+//  OPTIONAL, GOOGLE STREET VIEW for pin previews.
 //  Leave '' to use the free satellite preview (no setup).
 //  To enable true 360 Street View, paste a Google Maps Platform
 //  API key with the "Maps Embed API" enabled. See SETUP.md.
@@ -24,7 +24,7 @@ const MAPS_EMBED_KEY = '';
 // ---------- Word bank: broad CATEGORIES, each with several specific
 // pinnable WORDS. Everyone sees the category; only innocents see the
 // word. The imposter knows the theme but must guess which specific
-// thing everyone pinned — so they bluff a plausible location. ----------
+// thing everyone pinned, so they bluff a plausible location. ----------
 const CATEGORIES = {
   'Car':   ['Dealership', 'Speedway', 'Highway', 'Repair Shop', 'Highway to ****'],
   'Sports':           ['Surfing', 'Skiing', 'Football', 'Golf', 'Motorsport', 'Climbing', 'Sailing', 'Marathon'],
@@ -50,6 +50,38 @@ const WORD_BANK = Object.entries(CATEGORIES).flatMap(
 
 const ROUNDS_PER_SESSION = 3;
 
+// ---------- Player avatars: emoji picker + fallback colors ----------
+const EMOJI_OPTIONS = ['🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦉','🦄','🐝','🐙','🦋','🐢','🐍','🦖','🐳','🐬','🦀'];
+const PLAYER_COLORS = ['#e0a83c','#c1502e','#5b9bd5','#7fc97f','#d472c4','#f4d35e','#9b8cf2','#4ecdc4','#ff8c69','#a4c639','#ff6f91','#6fb8e0'];
+
+// ---------- Ad plumbing ----------
+// Flip to true once the CrazyGames SDK script is added to index.html and
+// CrazyGames.SDK.init() has run. See SETUP.md for the full walkthrough.
+const CRAZY_GAMES_ENABLED = false;
+// Set this to your own secret string. A host who enters it in the
+// "Ad-free code" field at room creation makes the whole room ad-free.
+const AD_FREE_CODE = '';
+
+// Shows a full-screen blocking "Advertisement" overlay, then resolves.
+// The overlay only blocks input visually/interactively, Firestore
+// snapshots, tryAdvancePhase(), etc. keep running underneath it.
+// Resolves immediately if the room is ad-free or ads are disabled.
+function showInterstitialAd(adFree) {
+  return new Promise(resolve => {
+    if (adFree || !CRAZY_GAMES_ENABLED) { resolve(); return; }
+    const overlay = $('ad-overlay');
+    overlay.hidden = false;
+    // TODO: once the CrazyGames SDK is loaded (see SETUP.md), replace this
+    // timeout with:
+    //   window.CrazyGames.SDK.ad.requestAd('midgame', {
+    //     adFinished: () => { overlay.hidden = true; resolve(); },
+    //     adError:    () => { overlay.hidden = true; resolve(); },
+    //     adStarted:  () => {},
+    //   });
+    setTimeout(() => { overlay.hidden = true; resolve(); }, 1200);
+  });
+}
+
 // ---------- Local state ----------
 const state = {
   roomCode: null,
@@ -60,6 +92,8 @@ const state = {
   room: null,
   imposters: 1,
   testMode: false,
+  discussionSeconds: 30,
+  voteSeconds: 60,
   lastRoundSeen: 0,        // for resetting per-round local UI
   lastPhaseSeen: null,
   myPin: null,
@@ -92,7 +126,7 @@ function saveSession() {
       playerName: state.playerName,
       isHost: state.isHost,
     }));
-  } catch (e) { /* private mode, etc — ignore */ }
+  } catch (e) { /* private mode, etc, ignore */ }
 }
 function loadSession() {
   try {
@@ -116,7 +150,7 @@ function pickWord(excludeWords = []) {
 }
 
 // Pick a word AND generate 2 decoy words from the same category.
-// The imposter sees all three (shuffled) — they know the theme and
+// The imposter sees all three (shuffled), they know the theme and
 // have real candidates to reason from, but don't know which is real.
 // This is the main imposter balance fix.
 function pickWordWithDecoys(excludeWords = []) {
@@ -151,7 +185,7 @@ function orderedPlayerIds(players) {
 // the order must be IDENTICAL on every device (otherwise people lose
 // track of which image is being discussed). Solution: every client
 // computes the same shuffle locally using a seed derived from the room
-// code and round number — values everyone already shares via Firestore.
+// code and round number, values everyone already shares via Firestore.
 // No extra Firestore writes, perfect agreement across devices, fresh
 // order each round.
 function seededHash(str) {
@@ -181,7 +215,76 @@ function shuffleSeeded(arr, seedString) {
 }
 
 // ============================================================
-//  MAPS — Leaflet instances. Lazy-initialized because Leaflet
+//  PLAYER AVATARS, emoji picker + per-player fallback colors
+// ============================================================
+// Builds a grid of emoji buttons (plus a "no emoji" option) inside the
+// given container. Click toggles which one is "active", read later via
+// getSelectedEmoji(). Each form (create/join) gets its own grid+state so
+// they never cross-contaminate each other.
+function buildEmojiGrid(containerId) {
+  const grid = $(containerId);
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const noneBtn = document.createElement('button');
+  noneBtn.type = 'button';
+  noneBtn.className = 'emoji-btn emoji-btn-none active';
+  noneBtn.textContent = 'NONE';
+  noneBtn.dataset.emoji = '';
+  grid.appendChild(noneBtn);
+
+  EMOJI_OPTIONS.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'emoji-btn';
+    btn.textContent = emoji;
+    btn.dataset.emoji = emoji;
+    grid.appendChild(btn);
+  });
+
+  grid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.emoji-btn');
+    if (!btn) return;
+    [...grid.children].forEach(b => b.classList.toggle('active', b === btn));
+  });
+}
+
+function getSelectedEmoji(containerId) {
+  const active = $(containerId)?.querySelector('.emoji-btn.active');
+  return active?.dataset.emoji || null;
+}
+
+// First color in PLAYER_COLORS not already taken by another player in the
+// room. Falls back to cycling by player count once all 12 are in use.
+function assignPlayerColor(players) {
+  const used = new Set(Object.values(players || {}).map(p => p.color).filter(Boolean));
+  for (const c of PLAYER_COLORS) if (!used.has(c)) return c;
+  return PLAYER_COLORS[Object.keys(players || {}).length % PLAYER_COLORS.length];
+}
+
+// Small badge shown next to a player's name in lists: their emoji, or a
+// colored dot in their assigned fallback color.
+function playerBadgeHTML(p) {
+  if (p?.emoji) return `<span class="player-emoji">${p.emoji}</span>`;
+  return `<span class="player-dot" style="background:${p?.color || 'var(--green)'}"></span>`;
+}
+
+// Map pin icon for a player: their emoji on a colored teardrop, or just
+// the colored teardrop if they didn't pick an emoji.
+function playerDivIcon(p) {
+  const color = p?.color || 'var(--green)';
+  const inner = p?.emoji ? `<span class="pin-marker-emoji">${p.emoji}</span>` : '';
+  return L.divIcon({
+    className: 'pin-marker',
+    html: `<div class="pin-marker-dot" style="background:${color}">${inner}</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -28],
+  });
+}
+
+// ============================================================
+//  MAPS, Leaflet instances. Lazy-initialized because Leaflet
 //  renders broken inside display:none containers; we init on first
 //  show and invalidateSize() on each re-show.
 // ============================================================
@@ -191,8 +294,9 @@ let specMap = null, specMarkers = [];
 
 function makeBaseMap(elId) {
   const m = L.map(elId, { worldCopyJump: true, zoomControl: true }).setView([25, 0], 2);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '(c) OpenStreetMap'
+  // CartoDB Dark Matter, free, no API key, fits the dark "field atlas" theme.
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, attribution: '(c) OpenStreetMap (c) CARTO'
   }).addTo(m);
   return m;
 }
@@ -212,16 +316,26 @@ function ensureSpecMap() {
   if (!specMap) specMap = makeBaseMap('spec-map');
   setTimeout(() => specMap.invalidateSize(), 80);
 }
+// Scrolls a map-fill-screen layout so its map section is in view by default,
+// putting the map front-and-center on first arrival at the screen.
+function scrollToMapSection(scrollId) {
+  requestAnimationFrame(() => {
+    const el = $(scrollId);
+    const mapSection = el?.querySelector('.map-section-map');
+    if (el && mapSection) el.scrollTop = mapSection.offsetTop;
+  });
+}
 function placeMyPin(latlng) {
   state.myPin = { lat: latlng.lat, lng: latlng.lng };
   if (!submitMarker) {
-    submitMarker = L.marker(latlng, { draggable: true }).addTo(submitMap);
+    const me = state.room?.players?.[state.playerId];
+    submitMarker = L.marker(latlng, { draggable: true, icon: playerDivIcon(me) }).addTo(submitMap);
     submitMarker.on('dragend', () => placeMyPin(submitMarker.getLatLng()));
   } else {
     submitMarker.setLatLng(latlng);
   }
   $('btn-submit-image').disabled = false;
-  renderPinPreview('submit-preview', latlng.lat, latlng.lng, 'Your pin');
+  renderPinPreview('submit-preview-placeholder', latlng.lat, latlng.lng, null);
 }
 // Street View (if MAPS_EMBED_KEY set) or free Esri satellite fallback.
 function renderPinPreview(containerId, lat, lng, label) {
@@ -241,7 +355,7 @@ function renderPinPreview(containerId, lat, lng, label) {
 }
 
 // ============================================================
-//  PLACE SEARCH — optional Nominatim lookup so players can jump
+//  PLACE SEARCH, optional Nominatim lookup so players can jump
 //  the map to a region before tapping their exact pin location.
 // ============================================================
 let searchDebounce = null;
@@ -290,6 +404,9 @@ $('submit-search').addEventListener('input', (e) => {
 // ============================================================
 $('btn-create').onclick = () => show('screen-create');
 $('btn-join').onclick   = () => show('screen-join');
+$('btn-howto').onclick  = () => show('screen-howto');
+buildEmojiGrid('emoji-grid-create');
+buildEmojiGrid('emoji-grid-join');
 document.querySelectorAll('[data-back]').forEach(b => {
   b.onclick = () => show(b.dataset.back);
 });
@@ -307,18 +424,28 @@ $('btn-do-create').onclick = async () => {
   state.playerName = name;
   state.isHost = true;
 
+  const adFreeInput = $('input-adfree-code').value.trim();
+  const adFree = AD_FREE_CODE !== '' && adFreeInput === AD_FREE_CODE;
+
   const initial = {
     code,
     hostId: state.playerId,
     phase: 'lobby',
     imposters: 1,
     testMode: false,
+    discussionSeconds: 30,
+    voteSeconds: 60,
+    adFree,
     round: 0,
     roundsPerSession: ROUNDS_PER_SESSION,
     usedWords: [],
     createdAt: serverTimestamp(),
     players: {
-      [state.playerId]: { name, joinedAt: Date.now(), eliminated: false }
+      [state.playerId]: {
+        name, joinedAt: Date.now(), eliminated: false,
+        emoji: getSelectedEmoji('emoji-grid-create'),
+        color: assignPlayerColor({})
+      }
     }
   };
 
@@ -327,6 +454,7 @@ $('btn-do-create').onclick = async () => {
     saveSession();
     subscribeRoom(code);
     show('screen-lobby');
+    await showInterstitialAd(adFree);
   } catch (e) {
     $('create-error').textContent = 'Could not create room. Check Firebase setup.';
     console.error(e);
@@ -359,12 +487,17 @@ $('btn-do-join').onclick = async () => {
     state.isHost = false;
 
     await updateDoc(roomRef(code), {
-      [`players.${state.playerId}`]: { name, joinedAt: Date.now(), eliminated: false }
+      [`players.${state.playerId}`]: {
+        name, joinedAt: Date.now(), eliminated: false,
+        emoji: getSelectedEmoji('emoji-grid-join'),
+        color: assignPlayerColor(snap.data().players || {})
+      }
     });
 
     saveSession();
     subscribeRoom(code);
     show('screen-lobby');
+    await showInterstitialAd(snap.data().adFree);
   } catch (e) {
     $('join-error').textContent = 'Could not join. Check your connection.';
     console.error(e);
@@ -402,6 +535,24 @@ $('imposter-seg').addEventListener('click', async (e) => {
   [...$('imposter-seg').children].forEach(b => b.classList.toggle('active', b === btn));
   // Sync to room so joiners see it
   try { await updateDoc(roomRef(state.roomCode), { imposters: n }); } catch (e) { /* ignore */ }
+});
+
+$('discussion-seg').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn || !state.isHost) return;
+  const n = parseInt(btn.dataset.sec, 10);
+  state.discussionSeconds = n;
+  [...$('discussion-seg').children].forEach(b => b.classList.toggle('active', b === btn));
+  try { await updateDoc(roomRef(state.roomCode), { discussionSeconds: n }); } catch (e) { /* ignore */ }
+});
+
+$('vote-seg').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn || !state.isHost) return;
+  const n = parseInt(btn.dataset.sec, 10);
+  state.voteSeconds = n;
+  [...$('vote-seg').children].forEach(b => b.classList.toggle('active', b === btn));
+  try { await updateDoc(roomRef(state.roomCode), { voteSeconds: n }); } catch (e) { /* ignore */ }
 });
 
 $('input-test-mode').addEventListener('change', async (e) => {
@@ -465,6 +616,7 @@ $('btn-start').onclick = async () => {
 $('btn-to-submit').onclick = () => {
   show('screen-submit');
   ensureSubmitMap();
+  scrollToMapSection('submit-scroll');
 };
 
 // ============================================================
@@ -491,16 +643,38 @@ $('btn-submit-image').onclick = async () => {
 };
 
 // ============================================================
+//  COLLAPSIBLE BOTTOM PANELS — each caret bar toggles its panel
+//  via a CSS transform (translateY), never display:none, so the
+//  map and Firestore sync underneath keep running uninterrupted.
+// ============================================================
+function setPanelCollapsed(caretBarId, panelId, glyphId, collapsed) {
+  $(panelId).classList.toggle('collapsed', collapsed);
+  $(caretBarId).setAttribute('aria-expanded', String(!collapsed));
+  $(glyphId).textContent = collapsed ? '▲' : '▼';
+}
+function setupCaretToggle(caretBarId, panelId, glyphId) {
+  $(caretBarId).onclick = () => {
+    setPanelCollapsed(caretBarId, panelId, glyphId, !$(panelId).classList.contains('collapsed'));
+  };
+}
+setupCaretToggle('submit-caret-bar', 'submit-dialog', 'submit-caret-glyph');
+setupCaretToggle('vote-panel-caret-bar', 'vote-panel', 'vote-panel-caret-glyph');
+
+// ============================================================
 //  SHOWCASE → host opens vote
 // ============================================================
 async function hostOpenVote() {
-  await updateDoc(roomRef(state.roomCode), { phase: 'vote' });
+  const voteSeconds = state.room?.voteSeconds || 60;
+  await updateDoc(roomRef(state.roomCode), {
+    phase: 'vote',
+    voteEndsAt: Date.now() + voteSeconds * 1000
+  });
 }
 $('btn-open-vote').onclick = hostOpenVote;
 $('btn-spec-open-vote').onclick = hostOpenVote;
 
 // ============================================================
-//  VOTING — players can change or clear their vote until
+//  VOTING, players can change or clear their vote until
 //  everyone has voted (then the round auto-advances).
 // ============================================================
 async function castVote(targetId) {
@@ -510,7 +684,7 @@ async function castVote(targetId) {
     });
   } catch (e) {
     console.error(e);
-    alert('Vote failed — try again.');
+    alert('Vote failed, try again.');
   }
 }
 
@@ -590,11 +764,14 @@ $('btn-play-again').onclick = async () => {
 function resetLocalUI() {
   state.myPin = null;
   if (submitMarker) { submitMarker.remove(); submitMarker = null; }
-  const sp = $('submit-preview'); if (sp) { sp.hidden = true; sp.innerHTML = ''; }
+  const spp = $('submit-preview-placeholder');
+  if (spp) spp.innerHTML = 'satellite preview';
   const shp = $('showcase-preview'); if (shp) { shp.hidden = true; shp.innerHTML = ''; }
   $('submit-waiting').hidden = true;
   $('btn-submit-image').disabled = true;
   $('vote-waiting').hidden = true;
+  setPanelCollapsed('submit-caret-bar', 'submit-dialog', 'submit-caret-glyph', false);
+  setPanelCollapsed('vote-panel-caret-bar', 'vote-panel', 'vote-panel-caret-glyph', false);
 }
 
 // ============================================================
@@ -602,6 +779,7 @@ function resetLocalUI() {
 // ============================================================
 async function leaveRoom() {
   clearSession();
+  const adFree = state.room?.adFree;
   try {
     if (state.roomCode && state.playerId) {
       await updateDoc(roomRef(state.roomCode), {
@@ -610,6 +788,7 @@ async function leaveRoom() {
     }
   } catch (e) { /* ignore */ }
   if (state.unsub) state.unsub();
+  await showInterstitialAd(adFree);
   location.reload();
 }
 $('btn-leave').onclick = leaveRoom;
@@ -629,7 +808,7 @@ async function tryAdvancePhase() {
   // re-checked inside the transaction for safety.
   const wantsAdvance =
     (r.phase === 'reveal' || r.phase === 'submit') ? checkSubmissionsComplete(r)
-    : (r.phase === 'vote')                          ? checkVotesComplete(r)
+    : (r.phase === 'vote')                          ? (checkVotesComplete(r) || (r.voteEndsAt && Date.now() >= r.voteEndsAt))
     : false;
 
   if (!wantsAdvance) return;
@@ -643,11 +822,15 @@ async function tryAdvancePhase() {
       // Re-verify inside the transaction
       if (fresh.phase === 'reveal' || fresh.phase === 'submit') {
         if (!checkSubmissionsComplete(fresh)) return;
-        tx.update(roomRef(state.roomCode), { phase: 'showcase' });
+        tx.update(roomRef(state.roomCode), {
+          phase: 'showcase',
+          discussionEndsAt: Date.now() + (fresh.discussionSeconds || 30) * 1000
+        });
         return;
       }
       if (fresh.phase === 'vote') {
-        if (!checkVotesComplete(fresh)) return;
+        const timedOut = fresh.voteEndsAt && Date.now() >= fresh.voteEndsAt;
+        if (!checkVotesComplete(fresh) && !timedOut) return;
         const result = computeRoundResult(fresh);
         const update = {
           phase: 'roundResult',
@@ -716,13 +899,15 @@ function computeRoundResult(r) {
     else if (n === topN) { topIds.push(id); }
   });
 
+  const noVotes = topIds.length === 0;
   const tied = topIds.length > 1;
-  const eliminatedId = tied ? null : topIds[0];
+  const eliminatedId = (tied || noVotes) ? null : topIds[0];
   const wasImposter = eliminatedId ? (r.roles?.[eliminatedId] === 'imposter') : false;
 
   return {
     tally,
     tied,
+    noVotes,
     eliminatedId,
     eliminatedName: eliminatedId ? (r.players?.[eliminatedId]?.name || '???') : null,
     wasImposter,
@@ -731,7 +916,58 @@ function computeRoundResult(r) {
 }
 
 // ============================================================
-//  RENDER — reacts to every room snapshot
+//  TIMERS, discussion gate countdown + vote countdown/auto-close
+// ============================================================
+function secondsLeft(endsAt) {
+  if (!endsAt) return 0;
+  return Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+}
+
+function updateTimers() {
+  const r = state.room;
+  if (!r) return;
+
+  if (r.phase === 'showcase') {
+    const remaining = secondsLeft(r.discussionEndsAt);
+    const ready = remaining <= 0;
+    const label = ready ? 'OPEN THE VOTE' : `OPEN THE VOTE (${remaining}s)`;
+
+    const openBtn = $('btn-open-vote');
+    if (!openBtn.hidden) {
+      openBtn.disabled = !ready;
+      openBtn.textContent = label;
+    }
+    const specBtn = $('btn-spec-open-vote');
+    if (!specBtn.hidden) {
+      specBtn.disabled = !ready;
+      specBtn.textContent = label;
+    }
+    const waiting = $('discuss-waiting');
+    if (!waiting.hidden) {
+      waiting.textContent = ready
+        ? 'discuss out loud, the host will open voting'
+        : `discuss out loud, voting opens in ${remaining}s`;
+    }
+  }
+
+  const badge = $('vote-countdown');
+  if (r.phase === 'vote' && r.voteEndsAt) {
+    const remaining = secondsLeft(r.voteEndsAt);
+    badge.hidden = false;
+    badge.textContent = `${remaining}s left`;
+    badge.classList.toggle('urgent', remaining <= 10);
+  } else {
+    badge.hidden = true;
+  }
+}
+
+setInterval(() => {
+  updateTimers();
+  tryAdvancePhase().catch(err => console.warn('advance attempt:', err));
+}, 1000);
+
+// ============================================================
+//  RENDER, reacts to every room snapshot
 // ============================================================
 function render() {
   const r = state.room;
@@ -750,7 +986,7 @@ function render() {
     const isH = id === r.hostId;
     const elim = players[id]?.eliminated;
     if (elim) li.classList.add('eliminated');
-    li.innerHTML = `<span class="player-dot"></span>${players[id]?.name || '???'}` +
+    li.innerHTML = `${playerBadgeHTML(players[id])}${players[id]?.name || '???'}` +
       (isH ? `<span class="host-tag">HOST</span>` : '') +
       (elim ? `<span class="elim-tag">OUT</span>` : '');
     list.appendChild(li);
@@ -759,7 +995,11 @@ function render() {
   $('host-settings').hidden = !state.isHost;
   $('joiner-settings').hidden = state.isHost;
   $('ro-imposters').textContent = r.imposters || 1;
+  $('ro-discussion').textContent = `${r.discussionSeconds || 30}s`;
+  $('ro-vote').textContent = `${r.voteSeconds || 60}s`;
   $('ro-testmode-row').hidden = !r.testMode;
+  $('ro-adfree-row').hidden = !r.adFree;
+  $('host-adfree-row').hidden = !r.adFree;
 
   // Round badges everywhere they appear
   const total = r.roundsPerSession || ROUNDS_PER_SESSION;
@@ -768,7 +1008,7 @@ function render() {
     .forEach(id => { const el = $(id); if (el) el.textContent = badgeText; });
 
   // Category chips (everyone sees these, all round long)
-  const catText = `CATEGORY: ${r.currentCategory || '—'}`;
+  const catText = `CATEGORY: ${r.currentCategory || ','}`;
   ['submit-category','showcase-category'].forEach(id => {
     const el = $(id); if (el) el.textContent = catText;
   });
@@ -778,6 +1018,7 @@ function render() {
     state.lastRoundSeen = r.round;
     resetLocalUI();
   }
+  const prevPhase = state.lastPhaseSeen;
   state.lastPhaseSeen = r.phase;
 
   // Am I eliminated? Spectator screen handles everything for me.
@@ -787,6 +1028,11 @@ function render() {
   // ----- Phase routing -----
   switch (r.phase) {
     case 'lobby':
+      // Host pressed "NEW SESSION", every client shows the ad over the
+      // already-rendered lobby (non-blocking; game state keeps running).
+      if (prevPhase === 'results') {
+        showInterstitialAd(r.adFree);
+      }
       if (!['screen-lobby','screen-create','screen-join','screen-home'].some(isOn)) {
         show('screen-lobby');
       } else if (isOn('screen-results') || isOn('screen-round-result') || isOn('screen-spectator')) {
@@ -804,7 +1050,10 @@ function render() {
     case 'showcase':
       if (iAmEliminated) { showSpectator(); break; }
       if (r.phase === 'showcase') {
-        if (!isOn('screen-showcase')) show('screen-showcase');
+        if (!isOn('screen-showcase')) {
+          show('screen-showcase');
+          scrollToMapSection('showcase-scroll');
+        }
         renderShowcase(r);
       } else {
         renderSubmitProgress(r);
@@ -839,6 +1088,8 @@ function render() {
     $('submit-progress').hidden = false;
     $('submit-progress').textContent = `${Object.keys(subs).length} / ${activeIds.length} submitted`;
   }
+
+  updateTimers();
 }
 
 function justEliminatedMe(r) {
@@ -848,30 +1099,30 @@ function justEliminatedMe(r) {
 function renderReveal(r) {
   const myRole = (r.roles || {})[state.playerId];
   const card = $('reveal-card');
-  const category = r.currentCategory || '—';
+  const category = r.currentCategory || ',';
   $('reveal-category').textContent = `CATEGORY: ${category}`;
   if (myRole === 'imposter') {
     card.classList.add('imposter');
     $('reveal-eyebrow').textContent = 'YOU ARE THE';
     $('reveal-word').textContent = 'IMPOSTER';
     // Show candidate words so the imposter has real options to reason from.
-    // One of these is the real word — they just don't know which.
+    // One of these is the real word, they just don't know which.
     const candidates = r.currentCandidates || [];
     const hint = candidates.length
-      ? `You don't know the exact word — but it's one of these: ${candidates.join(', ')}. Drop a pin that could fit any of them.`
-      : `You don't know the exact word — but you know the category. Drop a pin that fits the theme and bluff convincingly.`;
+      ? `You don't know the exact word, but it's one of these: ${candidates.join(', ')}. Drop a pin that could fit any of them.`
+      : `You don't know the exact word, but you know the category. Drop a pin that fits the theme and bluff convincingly.`;
     $('reveal-instruction').textContent = hint;
   } else {
     card.classList.remove('imposter');
     $('reveal-eyebrow').textContent = 'YOUR WORD';
-    $('reveal-word').textContent = r.currentWord || '—';
+    $('reveal-word').textContent = r.currentWord || ',';
     $('reveal-instruction').textContent =
-      "Drop a pin somewhere on Earth associated with this word — but don't be too obvious, or you'll out yourself.";
+      "Drop a pin somewhere on Earth associated with this word, but don't be too obvious, or you'll out yourself.";
   }
 }
 
 function renderSubmitProgress(r) {
-  // Visual progress only — actual screen control happens in phase routing above
+  // Visual progress only, actual screen control happens in phase routing above
 }
 
 function renderShowcase(r) {
@@ -882,7 +1133,7 @@ function renderShowcase(r) {
   const subs = r.submissions || {};
   const players = r.players || {};
   // Seeded shuffle: same discussion order on every device, fresh each round.
-  // Seed includes player IDs so the order is unique per group — fixes the
+  // Seed includes player IDs so the order is unique per group, fixes the
   // bug where code+round alone produced the same order every time.
   const baseOrder = orderedPlayerIds(players);
   const seed = `${r.code}:${r.round || 0}:${baseOrder.join(',')}`;
@@ -898,7 +1149,7 @@ function renderShowcase(r) {
     if (!s) return;
     const name = players[id]?.name || s.name || '???';
     idx += 1;
-    const mk = L.marker([s.lat, s.lng]).addTo(showcaseMap)
+    const mk = L.marker([s.lat, s.lng], { icon: playerDivIcon(players[id]) }).addTo(showcaseMap)
       .bindTooltip(name, { permanent: true, direction: 'top' });
     mk.on('click', () => renderPinPreview('showcase-preview', s.lat, s.lng, name));
     showcaseMarkers.push(mk);
@@ -933,7 +1184,7 @@ function renderVote(r) {
     const li = document.createElement('li');
     if (id === state.playerId) li.classList.add('self');
     if (myVote === id) li.classList.add('selected');
-    li.innerHTML = `<span class="player-dot"></span>${p.name}${id === state.playerId ? ' (you)' : ''}`;
+    li.innerHTML = `${playerBadgeHTML(p)}${p.name}${id === state.playerId ? ' (you)' : ''}`;
     li.onclick = () => {
       if (myVote === id) {
         // Tapping your current pick clears the vote
@@ -952,7 +1203,7 @@ function renderVote(r) {
   const waiting = $('vote-waiting');
   if (myVote) {
     waiting.hidden = false;
-    waiting.textContent = `vote locked in — you can still change it · ${voteCount} / ${activeIds.length}`;
+    waiting.textContent = `vote locked in, you can still change it · ${voteCount} / ${activeIds.length}`;
   } else if (voteCount > 0) {
     waiting.hidden = false;
     waiting.textContent = `${voteCount} / ${activeIds.length} voted`;
@@ -967,7 +1218,15 @@ function renderRoundResult(r) {
   block.innerHTML = '';
 
   const headline = document.createElement('div');
-  if (result.tied) {
+  if (result.noVotes) {
+    headline.className = 'result-headline tied';
+    headline.textContent = "TIME'S UP, NO ONE VOTED";
+    block.appendChild(headline);
+    const sub = document.createElement('div');
+    sub.className = 'result-row';
+    sub.innerHTML = `<span class="label">Outcome</span>No one was voted off.`;
+    block.appendChild(sub);
+  } else if (result.tied) {
     headline.className = 'result-headline tied';
     headline.textContent = 'THE VOTE WAS TIED';
     block.appendChild(headline);
@@ -1033,7 +1292,7 @@ function renderFinalResults(r) {
 
   const impRow = document.createElement('div');
   impRow.className = 'result-row';
-  impRow.innerHTML = `<span class="label">The imposter${Object.values(roles).filter(x=>x==='imposter').length > 1 ? 's were' : ' was'}</span><span class="imposter-name">${imposterNames || '—'}</span>`;
+  impRow.innerHTML = `<span class="label">The imposter${Object.values(roles).filter(x=>x==='imposter').length > 1 ? 's were' : ' was'}</span><span class="imposter-name">${imposterNames || ','}</span>`;
   block.appendChild(impRow);
 
   $('btn-play-again').hidden = !state.isHost;
@@ -1049,10 +1308,10 @@ function showSpectator() {
     .map(([id]) => players[id]?.name || '???')
     .join(', ');
   $('spec-imposter-reveal').textContent = `Imposter: ${imposterNames}`;
-  // Word reveal — out of play, so spectators get the full picture
+  // Word reveal, out of play, so spectators get the full picture
   $('spec-word-reveal').textContent = r.currentWord ? `Word: ${r.currentWord}` : '';
 
-  // Host controls — visible only if the spectator IS the host
+  // Host controls, visible only if the spectator IS the host
   // (so a voted-out host can still drive the game forward)
   $('spec-host-controls').hidden = !state.isHost;
   if (state.isHost) {
@@ -1066,7 +1325,10 @@ function showSpectator() {
 
   // Mirror the current pins on the spectator map.
   const wasOnSpectator = isOn('screen-spectator');
-  if (!wasOnSpectator) show('screen-spectator');
+  if (!wasOnSpectator) {
+    show('screen-spectator');
+    scrollToMapSection('spec-scroll');
+  }
   ensureSpecMap();
   specMarkers.forEach(m => m.remove());
   specMarkers = [];
@@ -1076,7 +1338,7 @@ function showSpectator() {
     const s = subs[id];
     if (!s) return;
     const name = players[id]?.name || s.name || '???';
-    const mk = L.marker([s.lat, s.lng]).addTo(specMap)
+    const mk = L.marker([s.lat, s.lng], { icon: playerDivIcon(players[id]) }).addTo(specMap)
       .bindTooltip(name, { permanent: true, direction: 'top' });
     specMarkers.push(mk);
     bounds.push([s.lat, s.lng]);
@@ -1109,8 +1371,8 @@ async function attemptRejoin({ silent = true } = {}) {
     hint.style.cssText = `
       position: fixed; top: max(20px, env(safe-area-inset-top)); left: 50%;
       transform: translateX(-50%); z-index: 100;
-      background: rgba(13,15,14,0.85); border: 1px solid var(--amber, #ffc24b);
-      color: var(--amber, #ffc24b); padding: 8px 14px; border-radius: 999px;
+      background: rgba(17,20,15,0.85); border: 1px solid var(--amber, #e0a83c);
+      color: var(--amber, #e0a83c); padding: 8px 14px; border-radius: 999px;
       font-family: 'Space Mono', monospace; font-size: 12px;
       backdrop-filter: blur(8px);
     `;
@@ -1142,9 +1404,17 @@ async function attemptRejoin({ silent = true } = {}) {
     state.isHost = room.hostId === saved.playerId;
     state.imposters = room.imposters || 1;
     state.testMode = !!room.testMode;
+    state.discussionSeconds = room.discussionSeconds || 30;
+    state.voteSeconds = room.voteSeconds || 60;
     if (state.isHost) {
       [...$('imposter-seg').children].forEach(b =>
         b.classList.toggle('active', parseInt(b.dataset.imp, 10) === state.imposters)
+      );
+      [...$('discussion-seg').children].forEach(b =>
+        b.classList.toggle('active', parseInt(b.dataset.sec, 10) === state.discussionSeconds)
+      );
+      [...$('vote-seg').children].forEach(b =>
+        b.classList.toggle('active', parseInt(b.dataset.sec, 10) === state.voteSeconds)
       );
       $('input-test-mode').checked = state.testMode;
     }
@@ -1155,9 +1425,9 @@ async function attemptRejoin({ silent = true } = {}) {
   } catch (e) {
     console.warn('rejoin failed:', e);
     if (hint) {
-      hint.textContent = 'could not reconnect — start fresh';
-      hint.style.borderColor = 'var(--red, #ff4d4d)';
-      hint.style.color = 'var(--red, #ff4d4d)';
+      hint.textContent = 'could not reconnect, start fresh';
+      hint.style.borderColor = 'var(--red, #c1502e)';
+      hint.style.color = 'var(--red, #c1502e)';
       setTimeout(() => hint.remove(), 2500);
     } else {
       // manual rejoin failure: brief inline error

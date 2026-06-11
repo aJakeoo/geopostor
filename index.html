@@ -5,19 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#1a1f15" />
+  <meta name="theme-color" content="#11140f" />
   <title>GEOPOSTOR</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Space+Mono:wght@400;700&family=Barlow:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Archivo+Black&family=Space+Mono:wght@400;700&family=Barlow:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
+  <div class="vote-countdown" id="vote-countdown" hidden></div>
+  <div class="ad-overlay" id="ad-overlay" hidden>
+    <div class="ad-overlay-inner">
+      <div class="ad-spinner" aria-hidden="true"></div>
+      <p class="ad-label">Advertisement</p>
+    </div>
+  </div>
   <main id="app">
 
     <section class="screen active" id="screen-home">
@@ -28,8 +35,37 @@
           <button class="btn btn-rejoin" id="btn-rejoin" hidden>REJOIN ROOM <span id="btn-rejoin-code">----</span></button>
           <button class="btn btn-primary" id="btn-create">CREATE ROOM</button>
           <button class="btn btn-ghost" id="btn-join">JOIN ROOM</button>
+          <button class="btn btn-ghost" id="btn-howto">HOW TO PLAY</button>
         </div>
         <p class="footer-note">a map-based social deduction game &middot; play on your own device</p>
+      </div>
+    </section>
+
+    <section class="screen screen-top" id="screen-howto">
+      <button class="back-btn" data-back="screen-home">&larr; back</button>
+      <div class="howto-content">
+        <h2 class="screen-title">HOW TO PLAY</h2>
+        <p class="howto-intro">Welcome to <strong>Geopostor</strong>! A social deduction map game by Jake Juip.</p>
+
+        <h3 class="howto-heading">HOW TO SET IT UP</h3>
+        <ul class="howto-list">
+          <li>The host/moderator needs to create a room/lobby. They will receive a code, and be automatically inserted into the room/lobby.</li>
+          <li>The players should press "<strong class="hl-amber">join room</strong>" and enter this room code and a player name. Press enter room to join.</li>
+          <li>The host/moderator is now able to change some settings. The players will be able to see a read version/mirror of the settings to observe with the host/moderator picks.</li>
+        </ul>
+
+        <h3 class="howto-heading">HOW TO PLAY</h3>
+        <ul class="howto-list">
+          <li>You need locations, three or more players, and one should be a moderator.</li>
+          <li>If you are the imposter, you will be greeted with a <strong class="hl-red">RED</strong> screen, don't let anyone see! this screen will tell you the category, but not the specific prompt word. Choose a location associated with the category carefully to blend in.</li>
+          <li>If you are a player, you'll be greeted with a <strong class="hl-green">GREEN</strong> screen. Don't let anyone see! Choose a location associated with the prompt, but don't be too obvious!</li>
+          <li>Use a combination of the map and the search bar to drop a pin.</li>
+          <li>When your location is locked in, press <strong class="hl-amber">SUBMIT PIN</strong> at the bottom of the screen. You can change it until all players have submitted.</li>
+          <li>When everyone has submitted, you will advance to an IRL discussion period. click on player names and talk to root out the <strong>Geopostor</strong>.</li>
+          <li>After 30 seconds of discussion the host/moderator will be prompted to open a vote with a green button.</li>
+          <li>VOTE!</li>
+          <li>This gameplay loop will continue until the <strong>Geoposters</strong> are all voted off, or the players are all voted off.</li>
+        </ul>
       </div>
     </section>
 
@@ -41,6 +77,8 @@
         <input class="field code-input" id="input-code" type="text" inputmode="text" autocomplete="off" maxlength="4" placeholder="ABCD" />
         <label class="field-label" for="input-name-join">Your name</label>
         <input class="field" id="input-name-join" type="text" autocomplete="off" maxlength="16" placeholder="e.g. Jake" />
+        <label class="field-label">Pick an avatar (optional)</label>
+        <div class="emoji-grid" id="emoji-grid-join"></div>
         <button class="btn btn-primary" id="btn-do-join">ENTER LOBBY</button>
         <p class="error-msg" id="join-error"></p>
       </div>
@@ -52,6 +90,10 @@
         <h2 class="screen-title">CREATE A ROOM</h2>
         <label class="field-label" for="input-name-create">Your name (you're the host)</label>
         <input class="field" id="input-name-create" type="text" autocomplete="off" maxlength="16" placeholder="e.g. Jake" />
+        <label class="field-label">Pick an avatar (optional)</label>
+        <div class="emoji-grid" id="emoji-grid-create"></div>
+        <label class="field-label" for="input-adfree-code">Ad-free code (optional)</label>
+        <input class="field" id="input-adfree-code" type="password" autocomplete="off" maxlength="32" placeholder="Have a code? Enter it here" />
         <button class="btn btn-primary" id="btn-do-create">CREATE</button>
         <p class="error-msg" id="create-error"></p>
       </div>
@@ -74,20 +116,38 @@
           <button class="seg-btn" data-imp="2">2</button>
           <button class="seg-btn" data-imp="3">3</button>
         </div>
+        <label class="field-label">Discussion time</label>
+        <div class="seg" id="discussion-seg">
+          <button class="seg-btn" data-sec="15">15s</button>
+          <button class="seg-btn active" data-sec="30">30s</button>
+          <button class="seg-btn" data-sec="45">45s</button>
+          <button class="seg-btn" data-sec="60">60s</button>
+        </div>
+        <label class="field-label">Vote time</label>
+        <div class="seg" id="vote-seg">
+          <button class="seg-btn" data-sec="30">30s</button>
+          <button class="seg-btn active" data-sec="60">60s</button>
+          <button class="seg-btn" data-sec="90">90s</button>
+          <button class="seg-btn" data-sec="120">120s</button>
+        </div>
         <label class="toggle-row">
           <input type="checkbox" id="input-test-mode" />
           <span class="toggle-label">
             <span class="toggle-name">Test mode</span>
-            <span class="toggle-hint">Bypass 3-player minimum. No win conditions &mdash; host ends the session manually.</span>
+            <span class="toggle-hint">Bypass 3-player minimum. No win conditions, host ends the session manually.</span>
           </span>
         </label>
+        <div class="ro-row" id="host-adfree-row" hidden><span class="ro-label">Ad-free code</span><span class="ro-value">accepted</span></div>
         <button class="btn btn-primary btn-start" id="btn-start">START SESSION</button>
         <p class="error-msg" id="lobby-error"></p>
       </div>
       <div class="joiner-settings" id="joiner-settings" hidden>
         <h3 class="settings-title">SETTINGS</h3>
         <div class="ro-row"><span class="ro-label">Imposters</span><span class="ro-value" id="ro-imposters">1</span></div>
+        <div class="ro-row"><span class="ro-label">Discussion time</span><span class="ro-value" id="ro-discussion">30s</span></div>
+        <div class="ro-row"><span class="ro-label">Vote time</span><span class="ro-value" id="ro-vote">60s</span></div>
         <div class="ro-row" id="ro-testmode-row" hidden><span class="ro-label">Test mode</span><span class="ro-value">on</span></div>
+        <div class="ro-row" id="ro-adfree-row" hidden><span class="ro-label">Ads</span><span class="ro-value">off</span></div>
         <p class="waiting-note">waiting for the host to start&hellip;</p>
       </div>
       <button class="leave-btn" id="btn-leave">leave room</button>
@@ -97,39 +157,81 @@
       <div class="round-badge" id="round-badge">ROUND 1 / 3</div>
       <div class="reveal-card" id="reveal-card">
         <span class="reveal-eyebrow" id="reveal-eyebrow">YOUR WORD</span>
-        <div class="reveal-word" id="reveal-word">&mdash;</div>
-        <div class="category-chip" id="reveal-category">CATEGORY: &mdash;</div>
+        <div class="reveal-word" id="reveal-word">,</div>
+        <div class="category-chip" id="reveal-category">CATEGORY: ,</div>
         <p class="reveal-instruction" id="reveal-instruction"></p>
       </div>
       <button class="btn btn-primary" id="btn-to-submit">GOT IT &rarr;</button>
     </section>
 
-    <section class="screen screen-top" id="screen-submit">
-      <div class="round-badge" id="round-badge-submit">ROUND 1 / 3</div>
-      <h2 class="screen-title">DROP YOUR PIN</h2>
-      <div class="category-chip" id="submit-category">CATEGORY: &mdash;</div>
-      <p class="submit-hint">Tap the map to place a pin somewhere associated with your word. Drag to fine-tune. Don't be too obvious.</p>
-      <div class="search-box">
-        <input class="search-field" id="submit-search" type="text" autocomplete="off" placeholder="Search for a place&hellip; (optional)" />
-        <ul class="search-results" id="submit-search-results" hidden></ul>
+    <section class="screen screen-map" id="screen-submit">
+      <div class="map-scroll" id="submit-scroll">
+        <div class="map-section map-section-top">
+          <h2 class="screen-title">DROP YOUR PIN</h2>
+          <p class="submit-hint">Tap the map to place a pin somewhere associated with your word. Drag to fine-tune. Don't be too obvious.</p>
+          <div class="search-box">
+            <input class="search-field" id="submit-search" type="text" autocomplete="off" placeholder="Search for a place&hellip; (optional)" />
+            <ul class="search-results" id="submit-search-results" hidden></ul>
+          </div>
+          <div class="scroll-hint">&darr; map below, scroll to drop your pin</div>
+        </div>
+        <div class="map-section map-section-map">
+          <div class="map-fill" id="submit-map"></div>
+          <div class="scroll-hint scroll-hint-floating scroll-hint-up">&uarr; prompt</div>
+        </div>
       </div>
-      <div class="map-box" id="submit-map"></div>
-      <div class="pin-preview" id="submit-preview" hidden></div>
-      <button class="btn btn-primary" id="btn-submit-image" disabled>SUBMIT PIN</button>
-      <p class="waiting-note" id="submit-waiting" hidden>submitted! waiting for others&hellip;</p>
-      <div class="submit-progress" id="submit-progress" hidden></div>
+
+      <!-- Layer 3: collapsible submit dialog -->
+      <div class="collapsible-panel submit-dialog" id="submit-dialog">
+        <div class="submit-dialog-hud">
+          <div class="round-badge" id="round-badge-submit">ROUND 1 / 3</div>
+          <div class="category-chip" id="submit-category">CATEGORY: ,</div>
+        </div>
+        <button class="btn btn-primary" id="btn-submit-image" disabled>SUBMIT PIN</button>
+        <p class="waiting-note" id="submit-waiting" hidden>submitted! waiting for others&hellip;</p>
+        <div class="submit-progress" id="submit-progress" hidden></div>
+      </div>
+
+      <!-- Layer 2: always-visible satellite/pin preview -->
+      <div class="pin-preview submit-preview-panel" id="submit-preview">
+        <div class="preview-label">SATELLITE PREVIEW</div>
+        <div class="preview-placeholder" id="submit-preview-placeholder">satellite preview</div>
+      </div>
+
+      <!-- Layer 1: caret bar -->
+      <button class="caret-bar submit-caret-bar" id="submit-caret-bar" type="button" aria-label="Toggle submit panel" aria-expanded="true">
+        <span class="caret-glyph" id="submit-caret-glyph">&#9660;</span>
+      </button>
     </section>
 
-    <section class="screen screen-top" id="screen-showcase">
-      <div class="round-badge" id="round-badge-showcase">ROUND 1 / 3</div>
-      <h2 class="screen-title">THE PINS</h2>
-      <div class="category-chip" id="showcase-category">CATEGORY: &mdash;</div>
-      <p class="submit-hint">Discuss in the order below. Tap a pin or name to inspect that spot. Then the host opens the vote.</p>
-      <div class="map-box map-box-large" id="showcase-map"></div>
-      <ol class="pin-legend" id="pin-legend"></ol>
-      <div class="pin-preview" id="showcase-preview" hidden></div>
-      <button class="btn btn-primary" id="btn-open-vote" hidden>OPEN THE VOTE</button>
-      <p class="waiting-note" id="discuss-waiting" hidden>discuss out loud &mdash; the host will open voting</p>
+    <section class="screen screen-map" id="screen-showcase">
+      <div class="map-scroll" id="showcase-scroll">
+        <div class="map-section map-section-top">
+          <div class="round-badge" id="round-badge-showcase">ROUND 1 / 3</div>
+          <h2 class="screen-title">THE PINS</h2>
+          <div class="category-chip" id="showcase-category">CATEGORY: ,</div>
+          <p class="submit-hint">Discuss in the order below. Tap a pin or name to inspect that spot. Then the host opens the vote.</p>
+          <div class="scroll-hint">&darr; map below</div>
+        </div>
+        <div class="map-section map-section-map">
+          <div class="map-fill" id="showcase-map"></div>
+          <div class="scroll-hint scroll-hint-floating scroll-hint-up">&uarr; prompt</div>
+          <div class="scroll-hint scroll-hint-floating scroll-hint-down">&darr; discuss order &amp; vote</div>
+          <div class="pin-preview pin-preview-overlay" id="showcase-preview" hidden></div>
+        </div>
+        <div class="map-section map-section-bottom">
+          <ol class="pin-legend" id="pin-legend"></ol>
+        </div>
+      </div>
+
+      <!-- Collapsible vote panel: Open Vote button + discussion countdown -->
+      <div class="collapsible-panel vote-panel" id="vote-panel">
+        <button class="btn btn-primary" id="btn-open-vote" hidden>OPEN THE VOTE</button>
+        <p class="waiting-note" id="discuss-waiting" hidden>discuss out loud, the host will open voting</p>
+      </div>
+      <button class="caret-bar vote-panel-caret-bar" id="vote-panel-caret-bar" type="button" aria-label="Toggle vote panel" aria-expanded="true">
+        <span class="caret-glyph" id="vote-panel-caret-glyph">&#9660;</span>
+      </button>
     </section>
 
     <section class="screen" id="screen-vote">
@@ -156,23 +258,33 @@
       <button class="leave-btn" id="btn-leave-results">leave room</button>
     </section>
 
-    <section class="screen screen-top" id="screen-spectator">
-      <div class="round-badge" id="round-badge-spec">ROUND 1 / 3</div>
-      <div class="spec-banner">
-        <span class="spec-eyebrow">YOU WERE VOTED OFF</span>
-        <p class="spec-info">You're now a spectator. You can see who the imposter is &mdash; and the word.</p>
-        <div class="spec-imposter-reveal" id="spec-imposter-reveal"></div>
-        <div class="spec-word-reveal" id="spec-word-reveal"></div>
+    <section class="screen screen-map" id="screen-spectator">
+      <div class="map-scroll" id="spec-scroll">
+        <div class="map-section map-section-top">
+          <div class="round-badge" id="round-badge-spec">ROUND 1 / 3</div>
+          <div class="spec-banner">
+            <span class="spec-eyebrow">YOU WERE VOTED OFF</span>
+            <p class="spec-info">You're now a spectator. You can see who the imposter is, and the word.</p>
+            <div class="spec-imposter-reveal" id="spec-imposter-reveal"></div>
+            <div class="spec-word-reveal" id="spec-word-reveal"></div>
+          </div>
+          <div class="spec-host-controls" id="spec-host-controls" hidden>
+            <p class="spec-host-note">You're the host. You can still control the game from here.</p>
+            <button class="btn btn-primary" id="btn-spec-open-vote" hidden>OPEN THE VOTE</button>
+            <button class="btn btn-primary" id="btn-spec-next-round" hidden>NEXT ROUND &rarr;</button>
+            <button class="btn btn-ghost btn-end-session" id="btn-spec-end-session" hidden>END SESSION</button>
+          </div>
+          <p class="submit-hint">Watch the rest play out, no voting, no pinning.</p>
+          <div class="scroll-hint">&darr; map below</div>
+        </div>
+        <div class="map-section map-section-map">
+          <div class="map-fill" id="spec-map"></div>
+          <div class="scroll-hint scroll-hint-floating scroll-hint-up">&uarr; details</div>
+        </div>
+        <div class="map-section map-section-bottom">
+          <p class="waiting-note">stay quiet, enjoy the chaos&hellip;</p>
+        </div>
       </div>
-      <div class="spec-host-controls" id="spec-host-controls" hidden>
-        <p class="spec-host-note">You're the host. You can still control the game from here.</p>
-        <button class="btn btn-primary" id="btn-spec-open-vote" hidden>OPEN THE VOTE</button>
-        <button class="btn btn-primary" id="btn-spec-next-round" hidden>NEXT ROUND &rarr;</button>
-        <button class="btn btn-ghost btn-end-session" id="btn-spec-end-session" hidden>END SESSION</button>
-      </div>
-      <p class="submit-hint">Watch the rest play out &mdash; no voting, no pinning.</p>
-      <div class="map-box" id="spec-map"></div>
-      <p class="waiting-note">stay quiet, enjoy the chaos&hellip;</p>
     </section>
 
   </main>
