@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#0d0f0e" />
+  <meta name="theme-color" content="#1a1f15" />
   <title>GEOPOSTOR</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Mono:wght@400;700&family=Archivo:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Space+Mono:wght@400;700&family=Barlow:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -109,6 +109,10 @@
       <h2 class="screen-title">DROP YOUR PIN</h2>
       <div class="category-chip" id="submit-category">CATEGORY: &mdash;</div>
       <p class="submit-hint">Tap the map to place a pin somewhere associated with your word. Drag to fine-tune. Don't be too obvious.</p>
+      <div class="search-box">
+        <input class="search-field" id="submit-search" type="text" autocomplete="off" placeholder="Search for a place&hellip; (optional)" />
+        <ul class="search-results" id="submit-search-results" hidden></ul>
+      </div>
       <div class="map-box" id="submit-map"></div>
       <div class="pin-preview" id="submit-preview" hidden></div>
       <button class="btn btn-primary" id="btn-submit-image" disabled>SUBMIT PIN</button>

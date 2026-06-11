@@ -26,7 +26,7 @@ const MAPS_EMBED_KEY = '';
 // word. The imposter knows the theme but must guess which specific
 // thing everyone pinned — so they bluff a plausible location. ----------
 const CATEGORIES = {
-  'Transportation':   ['Subway', 'Airport', 'Highway', 'Harbor', 'Railroad', 'Ferry', 'Bicycle', 'Canal'],
+  'Car':   ['Dealership', 'Speedway', 'Highway', 'Repair Shop', 'Highway to ****'],
   'Sports':           ['Surfing', 'Skiing', 'Football', 'Golf', 'Motorsport', 'Climbing', 'Sailing', 'Marathon'],
   'Food & Drink':     ['Pizza', 'Wine', 'Coffee', 'BBQ', 'Sushi', 'Cheese', 'Tequila', 'Chocolate'],
   'Industry':         ['Oil', 'Tech', 'Automobiles', 'Coal', 'Fishing', 'Shipbuilding', 'Steel', 'Diamonds'],
@@ -200,6 +200,7 @@ function ensureSubmitMap() {
   if (!submitMap) {
     submitMap = makeBaseMap('submit-map');
     submitMap.on('click', (e) => placeMyPin(e.latlng));
+    submitMap.on('click', hideSearchResults);
   }
   setTimeout(() => submitMap.invalidateSize(), 80);
 }
@@ -238,6 +239,51 @@ function renderPinPreview(containerId, lat, lng, label) {
       src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${lng-d},${lat-d*0.7},${lng+d},${lat+d*0.7}&bboxSR=4326&size=640,440&format=jpg&f=image" />`;
   }
 }
+
+// ============================================================
+//  PLACE SEARCH — optional Nominatim lookup so players can jump
+//  the map to a region before tapping their exact pin location.
+// ============================================================
+let searchDebounce = null;
+
+function hideSearchResults() {
+  const list = $('submit-search-results');
+  list.hidden = true;
+  list.innerHTML = '';
+}
+
+async function runPlaceSearch(query) {
+  const list = $('submit-search-results');
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`,
+      { headers: { 'User-Agent': 'Geopostor/1.0' } }
+    );
+    const places = await res.json();
+    list.innerHTML = '';
+    if (!places.length) { hideSearchResults(); return; }
+    places.forEach(place => {
+      const li = document.createElement('li');
+      li.textContent = place.display_name;
+      li.onclick = () => {
+        submitMap.setView([parseFloat(place.lat), parseFloat(place.lon)], 10);
+        hideSearchResults();
+        $('submit-search').blur();
+      };
+      list.appendChild(li);
+    });
+    list.hidden = false;
+  } catch (e) {
+    hideSearchResults();
+  }
+}
+
+$('submit-search').addEventListener('input', (e) => {
+  const query = e.target.value.trim();
+  clearTimeout(searchDebounce);
+  if (!query) { hideSearchResults(); return; }
+  searchDebounce = setTimeout(() => runPlaceSearch(query), 350);
+});
 
 // ============================================================
 //  HOME NAVIGATION
