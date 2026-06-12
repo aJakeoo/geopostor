@@ -52,7 +52,7 @@ const WORD_BANK = Object.entries(CATEGORIES).flatMap(
 const ROUNDS_PER_SESSION = 3;
 
 // ---------- Player avatars: emoji picker + fallback colors ----------
-const EMOJI_OPTIONS = ['🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦉','🦄','🐝','🐙','🦋','🐢','🐍','🦖','🐳','🐬','🦀'];
+const EMOJI_OPTIONS = ['🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦉','🦄','🐝','🐙','🦋','🐢','🐍','🦖','🐳','🐬','🦀','🐘'];
 const PLAYER_COLORS = ['#e0a83c','#c1502e','#5b9bd5','#7fc97f','#d472c4','#f4d35e','#9b8cf2','#4ecdc4','#ff8c69','#a4c639','#ff6f91','#6fb8e0'];
 
 // ---------- Ad plumbing ----------

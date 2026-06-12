@@ -985,6 +985,18 @@ body {
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
+/* Showcase screen: discussion order bar fixed to the top of the viewport, above the map */
+.discuss-order-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 860;
+  padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
 .map-fill {
   position: absolute;
   inset: 0;
@@ -1057,6 +1069,29 @@ body {
   transition: border-color .12s ease;
 }
 .pin-legend li:active { border-color: var(--green); }
+
+/* Discussion order bar: compact horizontal-wrap chips, Space Mono, amber accents */
+#discuss-order-bar .pin-legend {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: none;
+  gap: 6px;
+}
+#discuss-order-bar .pin-legend li {
+  background: var(--panel-2);
+  border: 1px solid var(--amber);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--amber);
+  white-space: nowrap;
+  transition: background-color .12s ease;
+}
+#discuss-order-bar .pin-legend li:active { background: var(--green-deep); }
 
 /* ---------- Map-fill scroll-snap layout ---------- */
 .screen-map {

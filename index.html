@@ -214,23 +214,27 @@
     </section>
 
     <section class="screen screen-map" id="screen-showcase">
+      <!-- Fixed discussion-order bar: anchored to the top of the viewport, above
+           the map, so it's visible the instant the showcase screen loads. -->
+      <div class="discuss-order-bar" id="discuss-order-bar">
+        <ol class="pin-legend" id="pin-legend"></ol>
+      </div>
+
       <div class="map-scroll" id="showcase-scroll">
         <div class="map-section map-section-top">
           <div class="round-badge" id="round-badge-showcase">ROUND 1 / 3</div>
           <h2 class="screen-title">THE PINS</h2>
           <div class="category-chip" id="showcase-category">CATEGORY: ,</div>
-          <p class="submit-hint">Discuss in the order below. Tap a pin or name to inspect that spot. Then the host opens the vote.</p>
+          <p class="submit-hint">Discuss in the order above. Tap a pin or name to inspect that spot. Then the host opens the vote.</p>
           <div class="scroll-hint">&darr; map below</div>
         </div>
         <div class="map-section map-section-map">
           <div class="map-fill" id="showcase-map"></div>
           <div class="scroll-hint scroll-hint-floating scroll-hint-up">&uarr; prompt</div>
-          <div class="scroll-hint scroll-hint-floating scroll-hint-down">&darr; discuss order &amp; vote</div>
+          <div class="scroll-hint scroll-hint-floating scroll-hint-down">&darr; vote panel</div>
           <div class="pin-preview pin-preview-overlay" id="showcase-preview" hidden></div>
         </div>
-        <div class="map-section map-section-bottom">
-          <ol class="pin-legend" id="pin-legend"></ol>
-        </div>
+        <div class="map-section map-section-bottom"></div>
       </div>
 
       <!-- Collapsible vote panel: Open Vote button + discussion countdown -->
