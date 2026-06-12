@@ -165,14 +165,16 @@
     </section>
 
     <section class="screen screen-map" id="screen-submit">
+      <!-- Fixed search bar: anchored to the top of the viewport, above the map -->
+      <div class="search-box submit-search-box">
+        <input class="search-field" id="submit-search" type="text" autocomplete="off" placeholder="Search for a place&hellip; (optional)" />
+        <ul class="search-results" id="submit-search-results" hidden></ul>
+      </div>
+
       <div class="map-scroll" id="submit-scroll">
         <div class="map-section map-section-top">
           <h2 class="screen-title">DROP YOUR PIN</h2>
           <p class="submit-hint">Tap the map to place a pin somewhere associated with your word. Drag to fine-tune. Don't be too obvious.</p>
-          <div class="search-box">
-            <input class="search-field" id="submit-search" type="text" autocomplete="off" placeholder="Search for a place&hellip; (optional)" />
-            <ul class="search-results" id="submit-search-results" hidden></ul>
-          </div>
           <div class="scroll-hint">&darr; map below, scroll to drop your pin</div>
         </div>
         <div class="map-section map-section-map">

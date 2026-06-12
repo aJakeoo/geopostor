@@ -890,6 +890,19 @@ body {
 .search-results li:last-child { border-bottom: none; }
 .search-results li:hover,
 .search-results li:active { background: var(--panel-2); color: var(--green); }
+
+/* Submit screen: search bar fixed to the top of the viewport, above the map */
+.search-box.submit-search-box {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 860;
+  padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
 .map-fill {
   position: absolute;
   inset: 0;
@@ -934,12 +947,13 @@ body {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 12px;
+  /* Float above the showcase caret bar/vote panel rather than sitting behind it */
+  bottom: calc(var(--caret-h) + env(safe-area-inset-bottom) + 12px);
   max-width: none;
-  z-index: 600;
+  z-index: 860;
   box-shadow: 0 8px 24px rgba(0,0,0,0.45);
 }
-.pin-preview-overlay .preview-frame { height: 150px; }
+.pin-preview-overlay .preview-frame { height: 195px; }
 .pin-legend {
   list-style: none;
   margin: 0;
@@ -1154,5 +1168,59 @@ body {
   bottom: calc(var(--caret-h) + env(safe-area-inset-bottom));
 }
 #screen-showcase .map-section-bottom {
-  padding-bottom: calc(var(--caret-h) + 140px);
+  padding-bottom: calc(var(--caret-h) + 185px);
+}
+
+/* ============================================================
+   LOBBY: fit everything in one viewport at mobile widths.
+   The screen itself stops scrolling; only the player list scrolls
+   internally, so the room code up top and the settings/action
+   buttons at the bottom always stay on screen. Desktop (>600px)
+   layout is untouched.
+   ============================================================ */
+@media (max-width: 600px) {
+  #screen-lobby {
+    overflow: hidden;
+    justify-content: flex-start;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+  #screen-lobby .room-code-label { font-size: 11px; }
+  #screen-lobby .room-code-big {
+    font-size: clamp(32px, 11vw, 48px);
+    margin-top: 2px;
+  }
+  #screen-lobby .players-block {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+  }
+  #screen-lobby .players-head { margin-bottom: 4px; }
+  #screen-lobby .player-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    gap: 6px;
+  }
+  #screen-lobby .player-list li { padding: 8px 10px; font-size: 14px; }
+  #screen-lobby .host-settings,
+  #screen-lobby .joiner-settings {
+    flex: 0 0 auto;
+    gap: 5px;
+  }
+  #screen-lobby .settings-title { margin: 2px 0 0; font-size: 10px; }
+  #screen-lobby .field-label { margin-top: 2px; font-size: 10px; }
+  #screen-lobby .seg-btn { min-height: 38px; font-size: 16px; }
+  #screen-lobby .toggle-row { padding: 8px 10px; margin-top: 2px; }
+  #screen-lobby .toggle-name { font-size: 13px; }
+  #screen-lobby .toggle-hint { font-size: 11px; }
+  #screen-lobby .ro-row { padding: 8px 12px; }
+  #screen-lobby .ro-value { font-size: 16px; }
+  #screen-lobby .btn-start { margin-top: 4px; min-height: 44px; font-size: 14px; }
+  #screen-lobby .waiting-note { font-size: 12px; }
+  #screen-lobby .error-msg { min-height: 0; margin: 0; }
+  #screen-lobby #btn-leave { margin-top: 2px; font-size: 12px; padding: 6px; }
 }
