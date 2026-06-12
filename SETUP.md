@@ -76,11 +76,24 @@ service cloud.firestore {
     match /georooms/{roomId} {
       allow read, write: if roomId.matches('^[A-Z]{4}$');
     }
+    match /imposter_wins/{playerKey} {
+      allow read, write: if true;
+    }
   }
 }
 ```
 
 (If you're still on open test-mode rules, it works until they expire — but switch to the above before then.)
+
+### Leaderboard collection: `imposter_wins`
+
+A new top-level collection, `imposter_wins`, stores a running win count per
+player name (no login). Each document is keyed by the player's name, lowercase
+and trimmed, with `{ name, wins }`. When a session ends with an imposter win
+(and `testMode` is off), every winning imposter's count is incremented by 1.
+The home screen reads this collection live to show the "TOP IMPOSTERS" top-5
+leaderboard and a personal "YOUR WINS" count for the last name you played
+under (read from this browser tab's session storage).
 
 ---
 

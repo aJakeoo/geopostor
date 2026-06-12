@@ -7,7 +7,7 @@ import { firebaseConfig } from './firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
   getFirestore, doc, setDoc, updateDoc, onSnapshot, runTransaction,
-  getDoc, serverTimestamp, deleteField
+  getDoc, serverTimestamp, deleteField, collection, query, orderBy, limit
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = initializeApp(firebaseConfig);
@@ -33,13 +33,13 @@ const CATEGORIES = {
   'Nature':           ['Erupt', 'Freeze', 'Flood', 'Bloom', 'Erode', 'Migrate', 'Fossilize'],
   'Animals':          ['Graze', 'Stalk', 'Nest', 'Herd', 'Hibernate', 'Burrow', 'Stalk'],
   'Weather':          ['Storm', 'Freeze', 'Fog', 'Drought', 'Surge', 'Gust', 'Flood'],
-  'Music':            ['Perform', 'Record', 'Rehearse', 'Tour', 'Broadcast', 'Mix', 'Busk'],
+  'Music':            ['Perform', 'Record', 'Rehearse', 'Tour', 'Broadcast', 'Mix', 'Jam'],
   'History':          ['Conquer', 'Excavate', 'Siege', 'Colonize', 'Revolt', 'Enshrine', 'Surrender'],
   'Entertainment':    ['Screen', 'Gamble', 'Perform', 'Thrill', 'Exhibit', 'Parade', 'Haunt'],
   'Science & Space':  ['Launch', 'Collide', 'Orbit', 'Transmit', 'Observe', 'Contain', 'Enrich'],
   'Nuclear':          ['Enrich', 'Contain', 'Meltdown', 'Reactor', 'Detonate', 'Shelter', 'Dispose'],
   'Landmarks':        ['Worship', 'Commemorate', 'Fortify', 'Guard', 'Illuminate', 'Span', 'Ascend'],
-  'US Culture':       ['Tailgate', 'Rodeo', 'Cruise', 'Pilgrim', 'Rally', 'Busk', 'Fry'],
+  'US Culture':       ['Tailgate', 'Rodeo', 'Cruise', 'Pilgrim', 'Rally', 'Jam', 'Fry'],
   'Outdoors':         ['Camp', 'Hike', 'Kayak', 'Hunt', 'Forage', 'Rappel', 'Ranger'],
   'Fashion':          ['Stitch', 'Drape', 'Fit', 'Dye', 'Lace', 'Press', 'Tailor'],
   'Beverages':        ['Brew', 'Tap', 'Barrel', 'Chill', 'Steep', 'Pour', 'Ferment'],
@@ -166,6 +166,25 @@ function pickWordWithDecoys(excludeWords = []) {
 }
 // Separate collection so Geopostor and Photostor never collide.
 function roomRef(code) { return doc(db, 'georooms', code); }
+
+// ============================================================
+//  IMPOSTER WINS LEADERBOARD, top-level `imposter_wins` collection,
+//  keyed by lowercase trimmed player name. No login, name is the key.
+// ============================================================
+function winsRef(name) { return doc(db, 'imposter_wins', name.trim().toLowerCase()); }
+
+async function incrementImposterWins(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return;
+  try {
+    await runTransaction(db, async (tx) => {
+      const ref = winsRef(trimmed);
+      const snap = await tx.get(ref);
+      const wins = (snap.exists() ? (snap.data().wins || 0) : 0) + 1;
+      tx.set(ref, { name: trimmed, wins });
+    });
+  } catch (e) { console.error(e); }
+}
 
 // ---------- Stable ordering ----------
 // Object key iteration order isn't guaranteed identical across devices,
@@ -381,7 +400,10 @@ async function runPlaceSearch(query) {
       const li = document.createElement('li');
       li.textContent = place.display_name;
       li.onclick = () => {
-        submitMap.setView([parseFloat(place.lat), parseFloat(place.lon)], 10);
+        const lat = parseFloat(place.lat);
+        const lng = parseFloat(place.lon);
+        submitMap.setView([lat, lng], 10);
+        placeMyPin({ lat, lng });
         hideSearchResults();
         $('submit-search').blur();
       };
@@ -664,7 +686,14 @@ setupCaretToggle('vote-panel-caret-bar', 'vote-panel', 'vote-panel-caret-glyph')
 // ============================================================
 //  SHOWCASE → host opens vote
 // ============================================================
+// True only for a host who has not been voted out, an eliminated host
+// loses host privileges and cannot trigger phase-advancing actions.
+function isActiveHost() {
+  return state.isHost && state.room?.players?.[state.playerId]?.eliminated !== true;
+}
+
 async function hostOpenVote() {
+  if (!isActiveHost()) return;
   const voteSeconds = state.room?.voteSeconds || 60;
   await updateDoc(roomRef(state.roomCode), {
     phase: 'vote',
@@ -703,6 +732,7 @@ async function clearMyVote() {
 //  ROUND RESULT actions
 // ============================================================
 async function hostNextRound() {
+  if (!isActiveHost()) return;
   const r = state.room;
   const nextRound = r.round + 1;
   const next = pickWordWithDecoys(r.usedWords || []);
@@ -724,6 +754,7 @@ $('btn-next-round').onclick = hostNextRound;
 $('btn-spec-next-round').onclick = hostNextRound;
 
 async function hostEndSession() {
+  if (!isActiveHost()) return;
   try {
     await updateDoc(roomRef(state.roomCode), {
       phase: 'results',
@@ -814,8 +845,14 @@ async function tryAdvancePhase() {
 
   if (!wantsAdvance) return;
 
+  // Set inside the transaction below if THIS attempt is the one that
+  // commits the imposters-win transition, so we can credit the
+  // imposter_wins leaderboard once, after the transaction succeeds.
+  let imposterWinnerNames = null;
+
   try {
     await runTransaction(db, async (tx) => {
+      imposterWinnerNames = null;
       const snap = await tx.get(roomRef(state.roomCode));
       if (!snap.exists()) return;
       const fresh = snap.data();
@@ -858,6 +895,9 @@ async function tryAdvancePhase() {
           } else if (fresh.round >= (fresh.roundsPerSession || ROUNDS_PER_SESSION)) {
             update.sessionWinner = 'imposters';
             update.phase = 'results';
+            imposterWinnerNames = aliveImposters
+              .map(([id]) => fresh.players?.[id]?.name)
+              .filter(Boolean);
           }
         }
         tx.update(roomRef(state.roomCode), update);
@@ -866,6 +906,15 @@ async function tryAdvancePhase() {
   } catch (e) {
     // Transaction conflicts are normal when multiple clients race; ignore.
     if (!String(e).includes('aborted')) console.warn(e);
+    return;
+  }
+
+  // Outside the transaction, only the client whose attempt actually
+  // committed the imposters-win transition has a non-null list here.
+  if (imposterWinnerNames && imposterWinnerNames.length) {
+    for (const name of imposterWinnerNames) {
+      await incrementImposterWins(name);
+    }
   }
 }
 
@@ -1252,8 +1301,10 @@ function renderRoundResult(r) {
   wordRow.innerHTML = `<span class="label">The word this round was</span><span class="word-name">${result.word}</span>`;
   block.appendChild(wordRow);
 
-  // Host controls: next round or end session
-  if (state.isHost) {
+  // Host controls: next round or end session. An eliminated host loses
+  // host privileges and sees the waiting state instead.
+  const iAmEliminated = (r.players || {})[state.playerId]?.eliminated === true;
+  if (state.isHost && !iAmEliminated) {
     if (r.testMode) {
       // Test mode: host always sees both buttons, no auto-end
       $('btn-next-round').hidden = false;
@@ -1312,10 +1363,13 @@ function showSpectator() {
   // Word reveal, out of play, so spectators get the full picture
   $('spec-word-reveal').textContent = r.currentWord ? `Word: ${r.currentWord}` : '';
 
-  // Host controls, visible only if the spectator IS the host
-  // (so a voted-out host can still drive the game forward)
-  $('spec-host-controls').hidden = !state.isHost;
-  if (state.isHost) {
+  // Host controls, visible only if the spectator IS the host AND the host
+  // has not been voted out, an eliminated host loses host privileges.
+  const me = players[state.playerId];
+  const iAmEliminated = me?.eliminated === true;
+  const iAmActiveHost = state.isHost && !iAmEliminated;
+  $('spec-host-controls').hidden = !iAmActiveHost;
+  if (iAmActiveHost) {
     // Mirror the same per-phase visibility logic used in the main views
     const phase = r.phase;
     $('btn-spec-open-vote').hidden     = !(phase === 'showcase');
@@ -1469,4 +1523,46 @@ refreshRejoinButton();
 
 // Kick off silent auto-rejoin (existing behavior preserved)
 attemptRejoin({ silent: true });
+
+// ============================================================
+//  HOME SCREEN: TOP IMPOSTERS leaderboard + personal wins tracker.
+//  Both live-sync from `imposter_wins` so they update automatically
+//  whenever any room finishes a session with an imposter win.
+// ============================================================
+function startLeaderboardSync() {
+  const list = $('leaderboard-list');
+  if (!list) return;
+  const q = query(collection(db, 'imposter_wins'), orderBy('wins', 'desc'), limit(5));
+  onSnapshot(q, snap => {
+    list.innerHTML = '';
+    if (snap.empty) {
+      list.innerHTML = '<li class="leaderboard-empty">no wins yet</li>';
+      return;
+    }
+    let rank = 0;
+    snap.forEach(docSnap => {
+      rank += 1;
+      const data = docSnap.data();
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="lb-rank">${rank}</span><span class="lb-name">${data.name}</span><span class="lb-wins">${data.wins || 0}</span>`;
+      list.appendChild(li);
+    });
+  }, err => console.warn(err));
+}
+
+function startPersonalWinsSync() {
+  const el = $('your-wins');
+  const countEl = $('your-wins-count');
+  if (!el || !countEl) return;
+  const saved = loadSession();
+  const name = saved?.playerName;
+  if (!name) { el.hidden = true; return; }
+  onSnapshot(winsRef(name), snap => {
+    countEl.textContent = snap.exists() ? (snap.data().wins || 0) : 0;
+    el.hidden = false;
+  }, err => console.warn(err));
+}
+
+startLeaderboardSync();
+startPersonalWinsSync();
 
