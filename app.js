@@ -868,11 +868,18 @@ async function tryAdvancePhase() {
 
           const aliveImposters = Object.entries(fresh.roles || {})
             .filter(([id, role]) => role === 'imposter' && !eliminatedIds.has(id));
+          const aliveInnocents = Object.entries(fresh.roles || {})
+            .filter(([id, role]) => role !== 'imposter' && !eliminatedIds.has(id));
 
           if (aliveImposters.length === 0) {
             update.sessionWinner = 'innocents';
             update.phase = 'results';
-          } else if (fresh.round >= (fresh.roundsPerSession || ROUNDS_PER_SESSION)) {
+          } else if (
+            aliveImposters.length >= aliveInnocents.length ||
+            fresh.round >= (fresh.roundsPerSession || ROUNDS_PER_SESSION)
+          ) {
+            // Imposters win if they outnumber or match innocents (1v1 is a win),
+            // or if all rounds are exhausted.
             update.sessionWinner = 'imposters';
             update.phase = 'results';
             imposterWinnerNames = aliveImposters
