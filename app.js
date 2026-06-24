@@ -1520,25 +1520,29 @@ function startLeaderboardSync() {
   const list = $('leaderboard-list');
   if (!list) return;
 
-  // Seed with a static top entry so the board is never empty.
   const SEED = [{ name: '🐢 jake', wins: 3 }];
 
-  const q = query(collection(db, 'imposter_wins'), orderBy('wins', 'desc'), limit(5));
-  onSnapshot(q, snap => {
-    // Merge live entries with the seed, deduplicate by name, re-sort.
-    const live = [];
-    snap.forEach(docSnap => live.push(docSnap.data()));
+  function render(live = []) {
     const merged = [...SEED, ...live]
       .filter((e, i, arr) => arr.findIndex(x => x.name === e.name) === i)
       .sort((a, b) => (b.wins || 0) - (a.wins || 0))
       .slice(0, 5);
-
     list.innerHTML = '';
     merged.forEach((data, i) => {
       const li = document.createElement('li');
       li.innerHTML = `<span class="lb-rank">${i + 1}</span><span class="lb-name">${data.name}</span><span class="lb-wins">${data.wins || 0}</span>`;
       list.appendChild(li);
     });
+  }
+
+  // Show seed immediately — don't wait for Firestore.
+  render();
+
+  const q = query(collection(db, 'imposter_wins'), orderBy('wins', 'desc'), limit(5));
+  onSnapshot(q, snap => {
+    const live = [];
+    snap.forEach(docSnap => live.push(docSnap.data()));
+    render(live);
   }, err => console.warn(err));
 }
 
