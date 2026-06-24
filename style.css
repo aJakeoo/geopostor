@@ -43,7 +43,7 @@ html, body {
 body {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg fill='none' stroke='%23c9a24b' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M-60 24 C 0 72, 120 -24, 300 48'/%3E%3Cpath d='M-60 84 C 0 132, 120 36, 300 108'/%3E%3Cpath d='M-60 144 C 0 192, 120 96, 300 168'/%3E%3Cpath d='M-60 204 C 0 252, 120 156, 300 228'/%3E%3C/g%3E%3C/svg%3E") repeat,
-    radial-gradient(120% 80% at 50% -10%, #232a1c 0%, var(--bg) 55%) var(--bg);
+    var(--bg);
   -webkit-user-select: none;
   user-select: none;
 }
