@@ -1520,7 +1520,11 @@ function startLeaderboardSync() {
   const list = $('leaderboard-list');
   if (!list) return;
 
-  const SEED = [{ name: '🐢 jake', wins: 3 }];
+  const SEED = [
+    { name: '🐢 jake',  wins: 3 },
+    { name: '🐯 thos',  wins: 2 },
+    { name: '🐘 ellie', wins: 1 },
+  ];
 
   function render(live = []) {
     const merged = [...SEED, ...live]
