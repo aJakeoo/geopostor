@@ -11,12 +11,14 @@
   --panel-2:   #242a1e;
   --line:      #39342a;
   --ink:       #ece6d8;
-  --ink-dim:   #9c9485;
+  --ink-dim:   #a8a094;
   --green:     #c9a24b;
   --green-deep:#3a2d10;
   --red:       #c1502e;
   --red-deep:  #3a1810;
   --amber:     #e0a83c;
+  --blue:      #7a9fb5;
+  --blue-deep: #162330;
   --radius:    10px;
   --tap:       58px;
   --caret-h:   34px;
@@ -155,8 +157,12 @@ body {
   /* Final safety net: if the word would still overflow on an ultra-narrow
      screen, shrink it to fit instead of clipping. */
   font-stretch: 95%;
+  text-shadow: 0 2px 32px rgba(0,0,0,0.6);
 }
-.logo-stor { color: var(--green); }
+.logo-stor {
+  color: var(--green);
+  text-shadow: 0 0 22px rgba(201,162,75,0.5), 0 0 60px rgba(201,162,75,0.18);
+}
 .tagline {
   font-family: 'Space Mono', monospace;
   color: var(--ink-dim);
@@ -329,6 +335,7 @@ body {
   color: #1d1306;
   box-shadow: 0 6px 0 var(--green-deep);
 }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
 .btn-primary:active { box-shadow: 0 2px 0 var(--green-deep); transform: translateY(3px) scale(.99); }
 .btn-primary:disabled {
   background: var(--panel-2);
@@ -342,6 +349,7 @@ body {
   border: 2px solid var(--line);
   box-shadow: inset 0 0 0 1px rgba(236,230,216,0.05);
 }
+.btn-ghost:hover { border-color: rgba(236,230,216,0.28); background: rgba(236,230,216,0.04); }
 .btn-rejoin {
   background: transparent;
   color: var(--amber);
@@ -349,6 +357,7 @@ body {
   box-shadow: 0 0 30px rgba(224, 168, 60, 0.15);
   letter-spacing: 0.05em;
 }
+.btn-rejoin:hover { background: rgba(224,168,60,0.08); box-shadow: 0 0 40px rgba(224,168,60,0.25); }
 .btn-rejoin:active {
   background: rgba(224, 168, 60, 0.08);
   transform: scale(0.97);
@@ -363,6 +372,7 @@ body {
   border-color: var(--red);
   color: var(--red);
 }
+.btn-end-session:hover { background: rgba(193,80,46,0.1); }
 .btn-start { margin-top: 22px; }
 
 .back-btn, .leave-btn {
@@ -374,7 +384,9 @@ body {
   font-size: 14px;
   cursor: pointer;
   padding: 10px;
+  transition: color .15s ease;
 }
+.back-btn:hover, .leave-btn:hover { color: var(--ink); }
 .back-btn { top: max(16px, env(safe-area-inset-top)); left: 14px; }
 .leave-btn { bottom: max(16px, env(safe-area-inset-bottom)); }
 
@@ -615,6 +627,7 @@ body {
   cursor: pointer;
   transition: all .12s ease;
 }
+.seg-btn:hover:not(.active) { border-color: rgba(236,230,216,0.25); color: var(--ink); }
 .seg-btn.active { border-color: var(--green); color: var(--green); background: var(--green-deep); }
 
 /* Test mode toggle */
@@ -822,8 +835,9 @@ body {
   padding: 0 18px;
   font-weight: 700; font-size: 17px;
   cursor: pointer;
-  transition: all .12s ease;
+  transition: all .15s ease;
 }
+.vote-list li:hover:not(.selected) { border-color: rgba(236,230,216,0.22); background: var(--panel-2); }
 .vote-list li.selected { border-color: var(--red); background: var(--red-deep); color: var(--ink); }
 .vote-list li.selected .player-dot { background: var(--red); }
 .vote-list li.self { border-style: dashed; }
@@ -944,7 +958,7 @@ body {
   padding: 0 16px;
 }
 .search-field::placeholder { color: var(--ink-dim); }
-.search-field:focus { border-color: var(--green); outline: none; }
+.search-field:focus { border-color: var(--blue); outline: none; }
 .search-results {
   list-style: none;
   margin: 6px 0 0;
@@ -971,7 +985,7 @@ body {
 }
 .search-results li:last-child { border-bottom: none; }
 .search-results li:hover,
-.search-results li:active { background: var(--panel-2); color: var(--green); }
+.search-results li:active { background: var(--panel-2); color: var(--blue); }
 
 /* Submit screen: search bar fixed to the top of the viewport, above the map */
 .search-box.submit-search-box {
@@ -1005,14 +1019,15 @@ body {
 .leaflet-container { background: #11140f; font-family: 'Barlow', sans-serif; }
 .leaflet-tooltip {
   background: rgba(13, 15, 14, 0.92);
-  border: 1px solid var(--green);
+  border: 1px solid var(--blue);
   color: var(--ink);
   font-weight: 800;
   font-size: 12px;
   border-radius: 8px;
   padding: 3px 8px;
+  box-shadow: 0 0 12px rgba(122,159,181,0.2);
 }
-.leaflet-tooltip-top:before { border-top-color: var(--green); }
+.leaflet-tooltip-top:before { border-top-color: var(--blue); }
 .pin-preview {
   width: 100%;
   max-width: 480px;
@@ -1068,7 +1083,8 @@ body {
   cursor: pointer;
   transition: border-color .12s ease;
 }
-.pin-legend li:active { border-color: var(--green); }
+.pin-legend li:hover { border-color: rgba(236,230,216,0.22); background: var(--panel-2); }
+.pin-legend li:active { border-color: var(--blue); }
 
 /* Discussion order bar: compact horizontal-wrap chips, Space Mono, amber accents */
 #discuss-order-bar .pin-legend {
@@ -1360,4 +1376,23 @@ body {
   #screen-home .leaderboard-list { gap: 4px; }
   #screen-home .leaderboard-list li { padding: 6px 10px; font-size: 12px; }
   #screen-home .footer-note { margin-top: 14px; }
+}
+
+/* ---------- Focus visibility (keyboard / a11y) ---------- */
+*:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+/* Fields handle their own focus ring via border-color */
+.field:focus-visible,
+.search-field:focus-visible { outline: none; }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
