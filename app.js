@@ -21,29 +21,9 @@ const db = getFirestore(app);
 // ============================================================
 const MAPS_EMBED_KEY = '';
 
-// ---------- Word bank: broad CATEGORIES, each with several specific
-// pinnable WORDS. Everyone sees the category; only innocents see the
-// word. The imposter knows the theme but must guess which specific
-// thing everyone pinned, so they bluff a plausible location. ----------
-const CATEGORIES = {
-  'Car':              ['Refuel', 'Cruise', 'Pit Stop', 'Test Drive', 'Restore', 'Tow', 'Inspect'],
-  'Sports':           ['Ski', 'Surf', 'Climb', 'Tee Off', 'Sprint', 'Spar', 'Dive'],
-  'Food & Drink':     ['Brew', 'Roast', 'Ferment', 'Press', 'Cure', 'Distill', 'Grind'],
-  'Industry':         ['Refine', 'Smelt', 'Drill', 'Haul', 'Weld', 'Mine', 'Forge'],
-  'Nature':           ['Erupt', 'Freeze', 'Flood', 'Bloom', 'Erode', 'Migrate', 'Fossilize'],
-  'Animals':          ['Graze', 'Stalk', 'Nest', 'Herd', 'Hibernate', 'Burrow', 'Stalk'],
-  'Weather':          ['Storm', 'Freeze', 'Fog', 'Drought', 'Surge', 'Gust', 'Flood'],
-  'Music':            ['Perform', 'Record', 'Rehearse', 'Tour', 'Broadcast', 'Mix', 'Jam'],
-  'History':          ['Conquer', 'Excavate', 'Siege', 'Colonize', 'Revolt', 'Enshrine', 'Surrender'],
-  'Entertainment':    ['Screen', 'Gamble', 'Perform', 'Thrill', 'Exhibit', 'Parade', 'Haunt'],
-  'Science & Space':  ['Launch', 'Collide', 'Orbit', 'Transmit', 'Observe', 'Contain', 'Enrich'],
-  'Nuclear':          ['Enrich', 'Contain', 'Meltdown', 'Reactor', 'Detonate', 'Shelter', 'Dispose'],
-  'Landmarks':        ['Worship', 'Commemorate', 'Fortify', 'Guard', 'Illuminate', 'Span', 'Ascend'],
-  'US Culture':       ['Tailgate', 'Rodeo', 'Cruise', 'Pilgrim', 'Rally', 'Jam', 'Fry'],
-  'Outdoors':         ['Camp', 'Hike', 'Kayak', 'Hunt', 'Forage', 'Rappel', 'Ranger'],
-  'Fashion':          ['Stitch', 'Drape', 'Fit', 'Dye', 'Lace', 'Press', 'Tailor'],
-  'Beverages':        ['Brew', 'Tap', 'Barrel', 'Chill', 'Steep', 'Pour', 'Ferment'],
-};
+// ---------- Word bank loaded from bank.json ----------
+// Edit bank.json to add/remove categories and words without touching app logic.
+const CATEGORIES = await fetch('./bank.json').then(r => r.json());
 // Flattened {word, category} list for exclusion tracking.
 const WORD_BANK = Object.entries(CATEGORIES).flatMap(
   ([category, words]) => words.map(word => ({ word, category }))
